@@ -1,0 +1,57 @@
+.link {
+  --on: 0;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85em;
+  padding-block: 6px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.link[data-tone='paper'] { color: var(--paper); }
+
+@media (hover: hover) and (pointer: fine) {
+  .link:hover { --on: 1; }
+}
+.link:focus-visible { --on: 1; outline-offset: 6px; }
+
+.text { position: relative; }
+
+/* the rule lives under the whole link and draws from the left */
+.rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: calc(0.25 + var(--on) * 0.75);
+  transform: scaleX(calc(0.36 + var(--on) * 0.64));
+  transform-origin: left center;
+  transition:
+    transform 0.34s var(--ease-out-expo),
+    opacity 0.34s var(--ease-out-expo);
+}
+
+.arrow {
+  display: block;
+  width: 22px;
+  transform: translate3d(calc(var(--on) * 5px), 0, 0);
+  transition: transform 0.32s var(--ease-out-quart);
+}
+.arrow svg { width: 100%; height: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rule, .arrow { transition-duration: 0.01ms !important; }
+}
+
+@media (max-width: 860px) {
+  /* 6px of padding around a 21px line is a 33px target — under the minimum */
+  .link {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+}

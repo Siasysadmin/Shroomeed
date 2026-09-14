@@ -1,0 +1,133 @@
+/* ------------------------------------------------------------------
+   ShrooMEED — design tokens
+
+   Colour is sampled from the product itself (amber body #bb6737,
+   highlight #cf7e49, cap #302e2f, label foil #c9a24b) and from the
+   existing site's page cream (#f4efe4), so the whole system shares the
+   product's own light.
+------------------------------------------------------------------- */
+:root {
+  /* --- surface ------------------------------------------------- */
+  --paper:            #f4efe4;
+  --paper-warm:       #f0e6d5;
+  --paper-deep:       #ebdfc9;
+
+  /* --- ink ----------------------------------------------------- */
+  --ink:              #191512;
+  --ink-soft:         #221d19;
+  --ink-70:           rgba(25, 21, 18, 0.70);
+  --ink-52:           rgba(25, 21, 18, 0.52);
+  --ink-38:           rgba(25, 21, 18, 0.38);
+  --ink-14:           rgba(25, 21, 18, 0.14);
+  --ink-08:           rgba(25, 21, 18, 0.08);
+
+  /* --- on dark surfaces ---------------------------------------- */
+  --paper-70:         rgba(244, 239, 228, 0.70);
+  --paper-52:         rgba(244, 239, 228, 0.52);
+  --paper-38:         rgba(244, 239, 228, 0.38);
+  --paper-14:         rgba(244, 239, 228, 0.14);
+  --paper-08:         rgba(244, 239, 228, 0.08);
+
+  /* --- brand --------------------------------------------------- */
+  --amber:            #b85f2e;
+  --amber-bright:     #cf7e49;
+  --amber-deep:       #8c4620;
+  --amber-wash:       rgba(184, 95, 46, 0.10);
+  --gold:             #c9a24b;
+  --gold-soft:        #e2c98f;
+
+  /* --- typography ---------------------------------------------- */
+  --font-display: 'Optima nova LT Pro', 'OptimaNovaLTPro', 'Optima', 'Marcellus', -apple-system, BlinkMacSystemFont,
+                  'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --font-sans:    'Poppins', -apple-system, BlinkMacSystemFont,
+                  'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
+  --fs-display:   clamp(2.85rem, 6.45vw, 5.9rem);
+  --fs-title:     clamp(2.1rem, 4.6vw, 4rem);
+  --fs-heading:   clamp(1.5rem, 2.3vw, 2.1rem);
+  --fs-lead:      clamp(0.98rem, 1.06vw, 1.15rem);
+  --fs-body:      clamp(0.94rem, 1.04vw, 1.06rem);
+  --fs-micro:     clamp(0.66rem, 0.7vw, 0.75rem);
+  --fs-numeral:   clamp(2.6rem, 5vw, 4.4rem);
+
+  --tracking-display: -0.045em;
+  --tracking-title:   -0.038em;
+  --tracking-micro:    0.16em;
+  --leading-display:   0.9;
+  --leading-lead:      1.5;
+
+  /* --- space --------------------------------------------------- */
+  --gutter:      clamp(20px, 4.2vw, 76px);
+  --nav-inset:   clamp(8px, 1.5vw, 16px);
+  --stack-sm:    clamp(14px, 1.4vw, 20px);
+  --stack-md:    clamp(22px, 2.4vw, 34px);
+  --stack-lg:    clamp(34px, 3.6vw, 54px);
+  --section-y:   clamp(88px, 12vw, 176px);
+
+  /* --- radii --------------------------------------------------- */
+  --r-pill:  999px;
+  --r-lg:    26px;
+  --r-md:    18px;
+
+  /* --- motion -------------------------------------------------- */
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);
+
+  --dur-xs:   0.16s;
+  --dur-sm:   0.24s;
+  --dur-md:   0.34s;
+  --dur-lg:   0.9s;
+  --dur-xl:   1.5s;
+
+  /* --- elevation ----------------------------------------------- */
+  --shadow-float:
+      0 1px 1px rgba(25, 21, 18, 0.04),
+      0 6px 14px -6px rgba(25, 21, 18, 0.10),
+      0 22px 48px -20px rgba(94, 52, 24, 0.22);
+  --shadow-pill:
+      0 1px 2px rgba(25, 21, 18, 0.10),
+      0 10px 24px -12px rgba(94, 52, 24, 0.34);
+
+  /* --- viewport-safe insets ------------------------------------ */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ------------------------------------------------------------------
+   Handset scale.
+
+   The desktop ramp is built from `vw`, which collapses onto its own
+   floor below ~900px — every clamp freezes at its minimum and the page
+   ends up with display type sized for a 1600px canvas sitting on a
+   375px one. Below 860px the ramp is re-based on the handset itself:
+   the floors come down, the ceilings come down further, and the `vw`
+   term is re-tuned so type still breathes between a 360px phone and a
+   large tablet instead of standing still.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  :root {
+    --fs-display:  clamp(2.15rem, 9.6vw, 3.4rem);
+    --fs-title:    clamp(1.8rem, 7.6vw, 2.7rem);
+    --fs-heading:  clamp(1.22rem, 4.6vw, 1.6rem);
+    --fs-lead:     clamp(0.97rem, 3.7vw, 1.12rem);
+    --fs-body:     clamp(0.92rem, 3.5vw, 1.02rem);
+    --fs-micro:    clamp(0.69rem, 2.7vw, 0.78rem);
+    --fs-numeral:  clamp(2.2rem, 11vw, 3.4rem);
+
+    /* tighter tracking is a large-type effect; it hurts at handset sizes */
+    --tracking-display: -0.03em;
+    --tracking-title:   -0.026em;
+    --leading-display:   0.98;
+
+    --gutter:     clamp(18px, 5.2vw, 26px);
+    --nav-inset:  10px;
+    --stack-sm:   14px;
+    --stack-md:   20px;
+    --stack-lg:   32px;
+    --section-y:  clamp(64px, 15vw, 96px);
+
+    --r-lg: 20px;
+    --r-md: 14px;
+  }
+}

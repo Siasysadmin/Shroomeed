@@ -1,0 +1,187 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 1.6vw, 26px);
+  flex-wrap: wrap;
+}
+
+.wrap[data-centered="true"] {
+  justify-content: center;
+}
+
+.aside {
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-micro);
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-38);
+}
+.aside span:first-child { color: var(--ink-52); }
+
+/* --- Split Half Button Base --- */
+
+.btn {
+  /* Theme tokens for our design */
+  --primary: var(--amber);
+  --secondary: var(--ink);
+  --surface: var(--paper);
+  --bink: var(--amber);     /* fill / border color */
+  --bsurf: var(--paper);    /* text color on hover */
+  
+  position: relative;
+  isolation: isolate;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  padding: 13px 24px;
+  border: 1px solid var(--bink);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--bink);
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.btn-label {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  transition: inherit;
+}
+
+/* Shared sliding panel */
+.btn::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: var(--bink);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+}
+
+.fx-46::before { inset: 0 50% 0 0; transform: translateX(-100%); }
+.fx-46::after {
+  content: ""; 
+  position: absolute; 
+  z-index: 1; 
+  inset: 0 0 0 50%;
+  background: var(--bink); 
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fx-46:hover::before, .fx-46:hover::after { transform: translateX(0); }
+.fx-46:hover .btn-label { color: var(--bsurf); }
+
+/* --- Rolling Text Stagger --- */
+
+.charWrapper {
+  display: inline-block;
+  overflow: hidden;
+  position: relative;
+  line-height: 1;
+}
+
+.char {
+  display: inline-block;
+  position: relative;
+  white-space: pre;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: calc(var(--index) * 0.025s);
+}
+
+.char::after {
+  content: attr(data-char);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  text-align: center;
+}
+
+.btn:hover .char {
+  transform: translateY(-100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .btn::before, .btn::after, .char {
+    transition-duration: 0.01ms !important;
+  }
+  .btn:hover .char { transform: none; }
+}
+
+/* ------------------------------------------------------------------
+   Handset CTA
+
+   On the desktop scene this is a restrained outline pill sitting on
+   photography. Under the stacked handset hero it is the last thing on
+   the block and the only thing being asked of the reader, so it fills
+   the measure and carries a solid fill — a target, not a mark.
+
+   The sliding-panel hover is left in place but neutralised: a touch
+   device fires `:hover` on tap and would otherwise leave the button
+   stuck mid-transition.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .wrap {
+    width: 100%;
+    gap: 14px;
+  }
+
+  .wrap[data-centered='true'] {
+    justify-content: stretch;
+  }
+
+  .btn {
+    width: 100%;
+    max-width: 460px;
+    margin-inline: auto;
+    justify-content: center;
+    padding: 18px 26px;
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+    background: var(--amber);
+    color: var(--paper);
+    border-color: var(--amber);
+    box-shadow: var(--shadow-pill);
+  }
+
+  .btn-label {
+    justify-content: center;
+    color: var(--paper);
+  }
+
+  .btn:active {
+    transform: scale(0.985);
+    background: var(--amber-deep);
+    border-color: var(--amber-deep);
+  }
+
+  .aside {
+    width: 100%;
+    justify-items: center;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
+/* No hover state on a finger — freeze the two-panel wipe and the roll. */
+@media (hover: none) {
+  .fx-46::before,
+  .fx-46::after { display: none; }
+
+  .btn:hover .char { transform: none; }
+  .fx-46:hover .btn-label { color: inherit; }
+}

@@ -1,0 +1,43 @@
+.split {
+  /* the break is art-directed; never let the browser re-flow it */
+  text-wrap: nowrap;
+}
+
+.line {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.24em;
+}
+
+.line[data-accent] { color: var(--amber); }
+
+/* One clip per word: the rise happens behind a hard baseline.
+   `flex: none` is load-bearing — a shrunk clip would cut the word in half. */
+.clip {
+  display: block;
+  flex: none;
+  overflow: hidden;
+  /* blur bleeds past the glyph box — a little room keeps descenders intact */
+  padding-bottom: 0.2em;
+  margin-bottom: -0.2em;
+}
+
+.word {
+  display: block;
+  will-change: transform, filter;
+}
+
+/* ------------------------------------------------------------------
+   Handset: the art direction yields to the measure.
+
+   Lines are written to break in a particular place at display sizes, and
+   `nowrap` + `flex: none` makes that break absolute — a line physically
+   cannot fold, so on a 375px frame an over-long one simply ran off both
+   edges. Below the breakpoint a line is allowed to wrap; the per-word
+   clip and the rise are untouched, so the animation still reads the same.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .split { text-wrap: wrap; }
+
+  .line { flex-wrap: wrap; }
+}

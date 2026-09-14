@@ -1,0 +1,114 @@
+/* ------------------------------------------------------------------
+   The mark: colour, size, and where each part turns from.
+
+   Everything tunable is a `--wa-*` custom property read with a fallback,
+   so this folder needs nothing declared outside it — but setting any of
+   them on an ancestor (`:root`, a wrapper, an inline style) overrides it.
+
+   `transform-box: fill-box` is the line that matters. Without it an SVG
+   transform-origin is measured from the viewBox corner, so the cap would
+   open from the top-left of the canvas instead of from its own base.
+------------------------------------------------------------------- */
+
+.logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--wa-logo-gap, clamp(15px, 1.7vw, 25px));
+}
+
+.mark {
+  display: block;
+  width: var(--wa-mark-size, clamp(104px, 13vw, 168px));
+  height: auto;
+  overflow: visible;
+}
+
+/* --- colour, straight from the supplied artwork --------------------- */
+
+.sweep {
+  fill: var(--wa-gold-light, #e9be55);
+}
+
+.seed,
+.core,
+.legLeft,
+.legRight,
+.body,
+.eye {
+  fill: var(--wa-gold, #e0b34a);
+}
+
+/* --- where each part turns from ------------------------------------- */
+
+.seed {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* every stem segment grows out of its own base, the way a stem does */
+.core,
+.legLeft,
+.legRight {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+/* the cap opens off the top of the stem, not off its own centre */
+.body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.eyePop,
+.eyeBlink {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* --- wordmark -------------------------------------------------------- */
+
+.word {
+  display: flex;
+  align-items: baseline;
+  font-family: var(
+    --wa-font,
+    'Cabinet Grotesk',
+    'Switzer',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Helvetica Neue',
+    Arial,
+    sans-serif
+  );
+  font-weight: 800;
+  font-size: calc(var(--wa-mark-size, clamp(104px, 13vw, 168px)) * 0.3);
+  letter-spacing: -0.012em;
+  line-height: 1;
+}
+
+/* Each letter rises out of its own baseline, so the word sets itself
+   rather than sliding in as one block. */
+.clip {
+  display: block;
+  overflow: hidden;
+  padding: 0.08em 0 0.04em;
+  margin: -0.08em 0 -0.04em;
+}
+
+.letter {
+  display: block;
+  /* The gradient is vertical and every letter is the same height, so a
+     per-letter fill is indistinguishable from one drawn across the word —
+     and it survives the transform a word-wide background-clip would not. */
+  background: linear-gradient(
+    180deg,
+    var(--wa-gold-light, #e9be55) 0%,
+    var(--wa-gold, #e0b34a) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  white-space: pre;
+}

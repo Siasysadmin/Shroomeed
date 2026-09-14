@@ -1,0 +1,356 @@
+.header {
+  position: fixed;
+  z-index: 50;
+  top: var(--nav-inset);
+  left: 50%;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - var(--nav-inset) * 2);
+}
+
+.capsule {
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.1vw, 18px);
+  padding: 7px 7px 7px clamp(16px, 1.5vw, 24px);
+  border-radius: var(--r-pill);
+
+  /* a material, not a sheet of glass: mostly opaque paper with a little depth */
+  background: rgba(252, 248, 241, 0.82);
+  border: 1px solid rgba(25, 21, 18, 0.07);
+  box-shadow: var(--shadow-float);
+
+  transition:
+    padding var(--dur-md) var(--ease-out-quart),
+    background var(--dur-md) var(--ease-out-quart),
+    box-shadow var(--dur-md) var(--ease-out-quart);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .capsule {
+    background: rgba(252, 248, 241, 0.66);
+    backdrop-filter: blur(16px) saturate(1.35);
+  }
+}
+
+/* Leaving the hero: the object tightens and firms up. It never becomes a bar. */
+.capsule[data-condensed] {
+  padding: 5px 5px 5px clamp(14px, 1.3vw, 20px);
+  background: rgba(252, 248, 241, 0.92);
+  box-shadow:
+    0 1px 1px rgba(25, 21, 18, 0.05),
+    0 10px 26px -14px rgba(25, 21, 18, 0.28);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.brandSvgLogo {
+  height: 20px;
+  width: auto;
+  object-fit: contain;
+}
+
+.brandAccent { color: var(--amber); }
+
+.brandMark {
+  font-size: 0.62em;
+  font-weight: 500;
+  vertical-align: super;
+  color: var(--ink-38);
+  margin-left: 0.1em;
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--ink-14);
+  flex: none;
+}
+
+.nav { display: block; }
+
+.list {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.item { display: block; }
+
+.link {
+  position: relative;
+  display: block;
+  padding: 9px clamp(10px, 0.9vw, 15px);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  color: var(--ink-52);
+  transition: color var(--dur-sm) var(--ease-out-quart);
+}
+.link:hover,
+.link:focus-visible { color: var(--ink); }
+.link[aria-current='true'] { color: var(--ink); font-weight: 600; }
+.link:focus-visible { outline-offset: 1px; }
+
+/* The one shared object that slides between items. */
+.indicator {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--r-pill);
+  background: rgba(25, 21, 18, 0.055);
+}
+
+.linkLabel { position: relative; z-index: 1; }
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 9px 15px 9px 17px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  transition:
+    background var(--dur-sm) var(--ease-out-quart),
+    transform var(--dur-sm) var(--ease-out-quart);
+}
+.action:hover,
+.action:focus-visible {
+  background: var(--amber);
+  transform: translate3d(0, -1px, 0);
+}
+
+.count {
+  display: grid;
+  place-items: center;
+  min-width: 1.55em;
+  height: 1.55em;
+  padding-inline: 0.35em;
+  border-radius: var(--r-pill);
+  background: rgba(244, 239, 228, 0.16);
+  font-size: 0.82em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background var(--dur-sm) var(--ease-out-quart);
+}
+.count[data-filled] { background: var(--amber-bright); color: var(--ink); }
+
+.iconActions {
+  position: fixed;
+  top: calc(var(--nav-inset) + 5px);
+  right: var(--nav-inset);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 50;
+}
+
+.iconBtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--ink-70);
+  background: transparent;
+  transition: all var(--dur-sm) var(--ease-out-quart);
+}
+
+.iconBtn:hover, .iconBtn:focus-visible {
+  color: var(--ink);
+  background: rgba(25, 21, 18, 0.05);
+}
+
+.badge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  background: var(--amber);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  border: 2px solid var(--paper);
+}
+
+/* ---- compact / mobile ------------------------------------------------ */
+
+.toggle {
+  display: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--paper);
+  place-items: center;
+}
+
+.toggleGlyph {
+  display: grid;
+  gap: 4px;
+  width: 15px;
+}
+.toggleGlyph i {
+  display: block;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform var(--dur-sm) var(--ease-out-quart);
+}
+.toggleGlyph[data-open] i:first-child { transform: translateY(2.75px) rotate(45deg); }
+.toggleGlyph[data-open] i:last-child { transform: translateY(-2.75px) rotate(-45deg); }
+
+.sheet {
+  width: 100%;
+  padding: 8px;
+  border-radius: 22px;
+  background: rgba(252, 248, 241, 0.94);
+  border: 1px solid rgba(25, 21, 18, 0.07);
+  box-shadow: var(--shadow-float);
+  transform-origin: top center;
+}
+@supports (backdrop-filter: blur(1px)) {
+  .sheet { background: rgba(252, 248, 241, 0.82); backdrop-filter: blur(16px) saturate(1.35); }
+}
+
+.sheetList { display: grid; gap: 2px; }
+
+.sheetLink {
+  display: block;
+  padding: 13px 16px;
+  border-radius: 15px;
+  font-size: var(--fs-lead);
+  font-weight: 500;
+  color: var(--ink-70);
+  transition: background var(--dur-xs) linear, color var(--dur-xs) linear;
+}
+.sheetLink:hover,
+.sheetLink:focus-visible {
+  background: rgba(25, 21, 18, 0.05);
+  color: var(--ink);
+}
+
+/* ---- the mobile-only cart, docked in the capsule's right slot -------- */
+
+.cartMobile {
+  display: none;
+  position: relative;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--ink);
+  transition: background var(--dur-sm) var(--ease-out-quart);
+}
+.cartMobile:active { background: rgba(25, 21, 18, 0.06); }
+
+/* ------------------------------------------------------------------
+   Handset nav
+
+   Three slots, fixed width at the edges so the middle one is optically
+   centred no matter how wide the logo renders: menu on the left, brand
+   in the centre, cart on the right. Everything else — the section links,
+   Shop, Account — moves into the sheet, so the bar itself never has to
+   compete for width with the content it sits over.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .header {
+    left: var(--nav-inset);
+    right: var(--nav-inset);
+    top: calc(var(--nav-inset) + var(--safe-top));
+    translate: none;
+    width: auto;
+    max-width: none;
+  }
+
+  .capsule {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+  }
+  .capsule[data-condensed] { padding: 6px; }
+
+  .toggle {
+    display: grid;
+    order: 1;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    justify-self: start;
+  }
+
+  .brand {
+    order: 2;
+    justify-self: center;
+    min-width: 0;
+  }
+  .brandSvgLogo { height: 22px; }
+
+  .cartMobile {
+    display: grid;
+    order: 3;
+    justify-self: end;
+  }
+
+  .nav,
+  .divider,
+  .action,
+  .iconActions { display: none; }
+
+  .sheet {
+    max-height: calc(100svh - var(--nav-inset) * 2 - var(--safe-top) - 74px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* a menu row is a primary target: give it a full finger, not a text line */
+  .sheetLink {
+    padding: 15px 18px;
+    font-size: 1.02rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capsule, .link, .action, .toggleGlyph i, .sheetLink {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 860px) {
+  /* the logo is the whole centre cell, so the tap area should be too */
+  .brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+  }
+}

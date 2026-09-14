@@ -1,0 +1,322 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 420px;
+  background-color: var(--paper, #fff); /* Background for the bottom part */
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.15);
+  overflow: hidden; /* Prevent drawer level scroll, handle inside if needed */
+}
+
+.imageSection {
+  position: relative;
+  width: 100%;
+  height: 42vh; /* Top section takes about 40% of height */
+  min-height: 280px;
+  background-color: #f2f0ef; /* Edge-to-edge subtle frame color */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px 40px 40px; /* Safe space so image doesn't overflow */
+}
+
+.topBar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
+}
+
+.cartLabel {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.5);
+  padding: 6px 16px;
+  border-radius: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.close {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(4px);
+  border: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s, transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.05);
+}
+
+.productImageWrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.productImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card {
+  background-color: var(--paper, #fff);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 32px 32px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* Stretch to fill bottom half */
+  margin-top: -30px; /* Restores the overlapping card effect */
+  z-index: 2;
+  box-shadow: 0 -10px 40px rgba(0,0,0,0.05);
+  overflow-y: auto; /* Allow scrolling inside card if screen is very short */
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.emptyState h2 {
+  font-size: 1.25rem;
+  color: var(--ink-70);
+  margin-bottom: 24px;
+}
+
+.continueBtn {
+  background-color: var(--amber);
+  color: #fff;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.continueBtn:hover {
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.starWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--amber);
+  margin-top: 2px;
+}
+
+.bullets {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 32px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bullets li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--ink-70);
+}
+
+.priceRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  margin-top: auto; /* Push price row & checkout button to bottom */
+}
+
+.priceCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.priceValue {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.qtyControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qtyLabel {
+  font-size: 0.95rem;
+  color: var(--ink-60);
+  font-weight: 500;
+}
+
+.qtyButtons {
+  display: flex;
+  align-items: center;
+  background: var(--ink-04);
+  border-radius: 99px;
+  padding: 4px 6px;
+}
+
+.qtyButtons button {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ink);
+  transition: background-color 0.2s;
+  font-weight: 500;
+}
+
+.qtyButtons button:hover {
+  background-color: var(--ink-10);
+}
+
+.qtyValue {
+  width: 36px;
+  text-align: center;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.checkoutBtn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: 20px;
+  background-color: var(--amber); /* the brand orange */
+  color: var(--paper, #fff);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: 12px;
+  letter-spacing: 0.05em;
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.checkoutBtn:hover {
+  transform: translateY(-2px);
+  background-color: var(--amber-deep, #e06c1d);
+  box-shadow: 0 8px 20px rgba(243, 121, 32, 0.3);
+}
+
+@media (max-width: 768px) {
+  .drawer {
+    width: 100%;
+  }
+  .imageSection {
+    height: 35vh;
+    min-height: 200px;
+    padding: 70px 20px 20px 20px;
+  }
+  .card {
+    padding: 24px 20px 24px 20px;
+    margin-top: -20px;
+  }
+  .title {
+    font-size: 1.6rem;
+  }
+  .checkoutBtn {
+    padding: 16px;
+    font-size: 1rem;
+  }
+  .subscriptionBadge {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+  .price {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .drawer {
+    max-width: none;
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .topBar { padding: calc(16px + var(--safe-top)) 16px 16px; }
+
+  .card {
+    padding: 22px 18px calc(22px + var(--safe-bottom));
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+  }
+
+  .title { font-size: 1.35rem; }
+
+  .cardHeader { margin-bottom: 18px; }
+
+  .bullets { margin-bottom: 22px; gap: 10px; }
+
+  .priceRow { margin-bottom: 20px; }
+
+  /* stepper buttons were 32px — under the 44px a finger actually needs */
+  .qtyButtons button { width: 40px; height: 40px; }
+
+  .checkoutBtn { padding: 17px; }
+}

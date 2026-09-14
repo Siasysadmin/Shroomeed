@@ -1,0 +1,309 @@
+.footer {
+  position: relative;
+  z-index: 3;
+  background: var(--amber);
+  color: var(--paper);
+  padding: clamp(56px, 7vw, 96px) var(--gutter) 0;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.inner { max-width: 1280px; margin-inline: auto; }
+
+/* --- mailing list ------------------------------------------------- */
+
+.signup {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(24px, 4vw, 72px);
+  padding-bottom: clamp(40px, 5vw, 72px);
+  border-bottom: 1px solid var(--paper-14);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: var(--stack-sm);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--paper-52);
+}
+
+.mark {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex: none;
+}
+
+.signupBody {
+  max-width: 44ch;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--paper-70);
+  text-wrap: pretty;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 16px 20px;
+  border: 1px solid rgba(244, 239, 228, 0.24);
+  border-radius: var(--r-pill);
+  background: rgba(244, 239, 228, 0.04);
+  color: var(--paper);
+  font: inherit;
+  font-size: var(--fs-body);
+  transition: border-color var(--dur-sm) var(--ease-out-quart);
+}
+.input::placeholder { color: var(--paper-38); }
+.input:hover { border-color: var(--paper-38); }
+.input:focus-visible { outline: 1.5px solid var(--gold); outline-offset: 2px; }
+.input[aria-invalid='true'] { border-color: var(--amber-bright); }
+
+.submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8em;
+  padding: 16px 26px;
+  border-radius: var(--r-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    background var(--dur-sm) var(--ease-out-quart),
+    transform var(--dur-sm) var(--ease-out-quart);
+}
+.submit svg { width: 20px; height: auto; }
+.submit:hover { background: var(--gold-soft); transform: translate3d(0, -1px, 0); }
+
+.status {
+  grid-column: 1 / -1;
+  min-height: 1.2em;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  color: var(--paper-52);
+}
+.status[data-state='invalid'] { color: var(--amber-bright); }
+.status[data-state='done'] { color: var(--gold-soft); }
+
+/* --- body ---------------------------------------------------------- */
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 72px);
+  padding-block: clamp(40px, 5vw, 72px);
+}
+
+.wordmark {
+  font-family: 'Outfit', 'Cabinet Grotesk', sans-serif;
+  font-size: clamp(1.3rem, 2vw, 1.7rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #D4AF37; /* Rich, metallic gold (not yellow) */
+}
+.wordmarkAccent { color: inherit; } /* Single color, no white mix */
+.wordmarkTm {
+  font-size: 0.55em;
+  font-weight: 500;
+  vertical-align: super;
+  color: var(--paper-38);
+  margin-left: 0.12em;
+}
+
+.blurb {
+  margin-top: var(--stack-sm);
+  max-width: 42ch;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--paper-52);
+  text-wrap: pretty;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 48px);
+}
+
+.columnTitle {
+  margin-bottom: var(--stack-sm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--paper-38);
+}
+
+.column li + li { margin-top: 10px; }
+
+.link {
+  font-size: var(--fs-body);
+  color: var(--paper-70);
+  transition: color var(--dur-xs) linear;
+}
+.link:hover, .link:focus-visible { color: var(--paper); }
+
+/* --- badges + legal ------------------------------------------------ */
+
+.footerBottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: clamp(24px, 3vw, 40px);
+  padding-top: clamp(24px, 3vw, 40px);
+  border-top: 1px solid var(--paper-08);
+}
+
+.legal {
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  color: var(--paper-38);
+}
+
+.verifiedBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.badgeSeal {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 1px solid #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  text-align: center;
+}
+
+.badgeSeal::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px dashed #ffffff;
+  opacity: 0.8;
+}
+
+.badgeSeal::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px solid #ffffff;
+  opacity: 0.6;
+}
+
+.badgeTitle {
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 2px;
+  z-index: 1;
+}
+
+.badgeSub {
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-top: 3px;
+  z-index: 1;
+}
+
+.giantBrand {
+  font-family: 'Outfit', 'Cabinet Grotesk', sans-serif;
+  font-size: 16.5vw;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.02em;
+  color: #D4AF37;
+  line-height: 0.62;
+  margin-top: clamp(20px, 5vw, 60px);
+  margin-bottom: 0;
+  padding-bottom: 0;
+  margin-inline: calc(var(--gutter) * -1);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.giantBrandAccent {
+  color: inherit;
+}
+
+@media (max-width: 900px) {
+  .signup, .body { grid-template-columns: minmax(0, 1fr); }
+  .columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .form { grid-template-columns: minmax(0, 1fr); }
+  .submit { justify-content: center; }
+  .giantBrand { line-height: 0.8; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input, .submit, .link { transition-duration: 0.01ms !important; }
+}
+
+@media (max-width: 640px) {
+  .footer { padding-top: clamp(44px, 11vw, 64px); }
+
+  .signup, .body { gap: var(--stack-md); }
+
+  .signupBody, .blurb { max-width: none; }
+
+  .columns { gap: 24px 20px; }
+
+  /* a footer link is a 15px line of text; give the finger something to land on */
+  .link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+  .column li + li { margin-top: 4px; }
+
+  .footerBottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .badgeSeal { width: 66px; height: 66px; }
+  .badgeTitle { font-size: 14px; }
+  .badgeSub { font-size: 8px; }
+
+  /* The wordmark is set in `vw` and never wraps, so at handset width it ran
+     past both gutters and was silently clipped by the footer. Sized to the
+     glyph count instead, it lands inside the frame on every phone. */
+  .giantBrand {
+    font-size: 17vw;
+    line-height: 0.86;
+    margin-inline: 0;
+    margin-top: var(--stack-md);
+  }
+}

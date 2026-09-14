@@ -1,0 +1,108 @@
+.section {
+  position: relative;
+  width: 100%;
+  background-color: var(--paper, #fdfbfa);
+  padding: 0;
+  margin-block: clamp(60px, 10vw, 120px);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: stretch;
+  gap: clamp(32px, 5vw, 64px);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(48px, 8vw, 96px) var(--gutter) clamp(48px, 8vw, 96px) max(var(--gutter), calc((100vw - 1440px) / 2));
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-70);
+  margin-bottom: var(--stack-md, 24px);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 2.75rem);
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--ink);
+  margin-bottom: var(--stack-md, 24px);
+  max-width: 15ch;
+}
+
+.description {
+  font-family: var(--font-body);
+  font-size: var(--fs-body, 1.125rem);
+  line-height: 1.6;
+  color: var(--ink-70);
+  margin-bottom: var(--stack-lg, 48px);
+  max-width: 45ch;
+  text-wrap: pretty;
+}
+
+.imageWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 60vh;
+  overflow: hidden;
+}
+
+.image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+@media (max-width: 900px) {
+  .inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  
+  .content {
+    padding: clamp(48px, 8vw, 64px) var(--gutter);
+    order: 1;
+  }
+  
+  .imageWrap {
+    order: 2;
+    min-height: 50vh;
+  }
+  
+  .title {
+    max-width: none;
+  }
+  
+  .description {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  /* `vh` is the pre-collapse viewport on mobile Safari, so a 50vh block jumps
+     as the URL bar retracts; `svh` is stable, and half a screen is plenty */
+  .imageWrap {
+    min-height: min(46svh, 78vw);
+  }
+
+  .content {
+    padding: clamp(34px, 9vw, 48px) var(--gutter);
+  }
+
+  .eyebrow { font-size: var(--fs-micro); letter-spacing: 0.08em; }
+}

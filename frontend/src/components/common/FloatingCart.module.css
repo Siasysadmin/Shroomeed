@@ -1,0 +1,154 @@
+.wrapper {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  z-index: 100;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: rgba(15, 15, 15, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s ease, border-color 0.3s ease;
+}
+
+.bar:hover {
+  background: rgba(15, 15, 15, 0.85);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: scale(1.02);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.imageWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imageWrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(1.1);
+}
+
+.textWrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.title {
+  color: #fff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  margin: 2px 0 0 0;
+  line-height: 1.2;
+}
+
+.addButton {
+  background: #f2eee8;
+  color: #000;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 12px 24px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.addButton:hover {
+  background: #fff;
+  transform: scale(1.05);
+}
+
+.addButton:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 480px) {
+  .bar {
+    padding: 6px 6px 6px 12px;
+    gap: 12px;
+  }
+  
+  .imageWrap {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .title {
+    font-size: 0.9rem;
+  }
+  
+  .subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .addButton {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Handset: the add-to-cart bar spans the gutters rather than hugging its
+   own content, so the button is always in the same place, and it clears
+   the home indicator on a notched phone.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .wrapper {
+    left: 50%;
+    bottom: calc(12px + var(--safe-bottom));
+    width: calc(100vw - var(--gutter) * 2);
+    max-width: 460px;
+  }
+
+  .bar { gap: 12px; }
+
+  .left { gap: 12px; min-width: 0; }
+
+  .textWrap { min-width: 0; }
+
+  .title,
+  .subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .addButton { flex: none; }
+}

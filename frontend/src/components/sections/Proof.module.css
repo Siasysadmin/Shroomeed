@@ -1,0 +1,391 @@
+.section {
+  position: relative;
+  z-index: 2;
+  padding: clamp(60px, 8vw, 100px) var(--gutter);
+}
+
+.headerRow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 32px;
+}
+
+.head {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: var(--stack-sm);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--ink-52);
+}
+
+.mark {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex: none;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: normal;
+  letter-spacing: var(--tracking-title);
+  line-height: 1;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--stack-md);
+}
+
+.score {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  background: var(--amber-wash);
+  color: var(--amber-deep);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ratingLabel { max-width: 30ch; font-size: var(--fs-body); color: var(--ink-70); }
+
+/* ---- See All Link ---- */
+.seeAllWrap {
+  grid-column: 3;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.seeAllLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  color: var(--ink-70);
+  text-decoration: none;
+  transition: color var(--dur-xs) linear;
+  padding: 12px 24px;
+  border: 1px solid var(--ink-14);
+  border-radius: var(--r-pill);
+}
+
+.seeAllLink:hover, .seeAllLink:focus-visible {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.seeAllLink span {
+  font-size: 1.1em;
+  transition: transform var(--dur-xs) var(--ease-out-quart);
+}
+
+.seeAllLink:hover span {
+  transform: translateX(4px);
+}
+
+/* ---- Cards Grid / Masonry ---- */
+.masonry {
+  column-count: 4;
+  column-gap: clamp(16px, 2vw, 24px);
+  margin-top: clamp(40px, 6vw, 64px);
+}
+
+.masonryItem {
+  break-inside: avoid;
+  margin-bottom: clamp(16px, 2vw, 24px);
+}
+
+.uniformGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(16px, 2vw, 24px);
+  margin-top: clamp(40px, 6vw, 64px);
+}
+
+.uniformItem {
+  height: 100%;
+}
+.uniformItem > div {
+  height: 100%;
+}
+
+.card {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+ text-decoration: none; color: inherit; }
+
+/* a card that links somewhere says so on hover, media and text alike */
+a.card {
+  transition: transform var(--dur-sm) var(--ease-out-quart),
+              box-shadow var(--dur-sm) var(--ease-out-quart);
+}
+a.card:hover {
+  transform: translate3d(0, -3px, 0);
+  box-shadow: 0 12px 30px -14px rgba(25, 21, 18, 0.3);
+}
+
+/* Text Card
+   The written testimonials used to sit on bare cream with no edge, so a
+   column of the wall read as photographs interrupted by loose paragraphs.
+   They now carry the same frame as a media card — same radius, a hairline
+   border and a hair of lift — so the wall reads as one set. */
+.cardText {
+  box-shadow: 0 1px 2px rgba(25, 21, 18, 0.03);
+  padding: 24px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.monogram {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-14);
+  background: var(--amber);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: 700;
+  color: var(--ink);
+  flex: none;
+}
+
+.who { display: flex; flex-direction: column; gap: 2px; }
+
+.name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.role { font-size: 0.75rem; color: var(--ink-52); }
+
+.quote {
+  font-size: 0.95rem;
+}
+
+/* Media Cards */
+.cardMedia {
+  min-height: 320px;
+  justify-content: flex-end;
+  padding: 24px;
+  color: #fff;
+}
+
+.cardVideo {
+  aspect-ratio: 9 / 16;
+}
+
+.mediaBg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.mediaOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mediaName {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* An admin review can carry both a cover and words; the words sit under the
+   name on the same dark scrim rather than becoming a second card. */
+.mediaQuote {
+  text-wrap: pretty;
+}
+
+.playBtn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.playBtn:hover { transform: translate(-50%, -50%) scale(1.1); }
+.playBtn svg { width: 14px; height: auto; margin-left: 2px; }
+
+.mediaCaption {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  right: 24px;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.05;
+  text-align: center;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+}
+
+@media (max-width: 1024px) {
+  .masonry { column-count: 3; }
+  .uniformGrid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .masonry { column-count: 2; }
+  .uniformGrid { grid-template-columns: repeat(2, 1fr); }
+  .headerRow { 
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+    gap: 24px; 
+  }
+}
+
+@media (max-width: 480px) {
+  .masonry { column-count: 1; }
+  .uniformGrid { grid-template-columns: 1fr; }
+}
+
+.intro { margin-top: var(--stack-md); max-width: 50ch; font-size: var(--fs-body); color: var(--ink-70); line-height: 1.6; text-wrap: pretty; }
+
+
+@media (max-width: 640px) {
+  .title { font-size: clamp(1.9rem, 8.4vw, 2.8rem); line-height: 1.08; }
+
+  .intro { max-width: none; }
+
+  .seeAllWrap { width: 100%; }
+
+  .seeAllLink {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    max-width: 400px;
+    margin-inline: auto;
+    padding: 15px 24px;
+  }
+
+  .playBtn { width: 48px; height: 48px; }
+
+  .card { padding: 20px; }
+
+  .quote { font-size: var(--fs-body); line-height: 1.6; }
+}
+
+/* ---- wall refinements ------------------------------------------------ */
+
+.cardLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 20px;
+  transition: transform var(--dur-sm) var(--ease-out-quart);
+}
+.cardLink:hover { transform: translate3d(0, -3px, 0); }
+
+/* A text card carries no photograph, so the frame itself has to do the work
+   the image would otherwise do — otherwise it reads as a gap in the wall. */
+.cardText {
+  background: var(--paper-warm);
+  border: 1px solid var(--ink-08);
+  min-height: 200px;
+}
+
+.quote {
+  /* the quote is the card's subject; give it room to be read */
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.mediaQuote {
+  position: relative;
+  z-index: 2;
+  margin-top: 6px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+/* ------------------------------------------------------------------
+   Handset: a feed, not a wall.
+
+   On a phone the wall becomes one column of full-width posts read top to
+   bottom, like scrolling an Instagram feed — one review at a time, each at
+   a size that can actually be read, newest first. Photos and videos share
+   one 4:5 portrait frame so the feed keeps an even rhythm.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .masonry { column-count: 1; }
+  .masonryItem { margin-bottom: 16px; }
+  .uniformGrid { grid-template-columns: 1fr; gap: 16px; }
+
+  .card { border-radius: 18px; }
+
+  .cardText { padding: 20px; min-height: 0; }
+  .cardTop { gap: 12px; margin-bottom: 14px; }
+  .monogram { width: 42px; height: 42px; font-size: 0.95rem; }
+  .name { font-size: 1.05rem; }
+  .role { font-size: 0.75rem; }
+  .quote { font-size: 1rem; line-height: 1.6; }
+
+  .cardMedia,
+  .cardVideo { min-height: 0; aspect-ratio: 4 / 5; padding: 18px; }
+  .mediaName { font-size: 1.3rem; }
+  .mediaQuote { font-size: 0.92rem; }
+  .mediaCaption { top: 18px; left: 18px; right: 18px; font-size: 1.35rem; }
+  .playBtn { width: 56px; height: 56px; }
+  .playBtn svg { width: 14px; }
+
+  .title { font-size: clamp(1.85rem, 8vw, 2.6rem); line-height: 1.08; }
+  .intro { max-width: none; }
+
+  .seeAllWrap { width: 100%; }
+  .seeAllLink { width: 100%; justify-content: center; }
+}

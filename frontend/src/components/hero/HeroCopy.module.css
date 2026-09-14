@@ -1,0 +1,75 @@
+.copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 4.5rem);
+  font-weight: normal;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: var(--stack-md);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--ink-52);
+}
+
+.mark {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber);
+  flex: none;
+}
+
+.lead {
+  margin-top: var(--stack-md);
+  margin-bottom: var(--stack-lg);
+  max-width: 48ch;
+  font-size: var(--fs-lead);
+  font-weight: 400;
+  line-height: var(--leading-lead);
+  letter-spacing: -0.005em;
+  color: var(--ink-70);
+  text-wrap: pretty;
+}
+
+@media (max-width: 860px) {
+  .copy {
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .eyebrow {
+    margin-bottom: var(--stack-sm);
+  }
+
+  .headline {
+    font-size: clamp(2.05rem, 9.2vw, 3.1rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+
+  .lead {
+    margin-top: var(--stack-sm);
+    margin-bottom: var(--stack-md);
+    /* the old 24ch cap kept the lead clear of a bottle standing to the right;
+       on the tall mobile plate the copy sits under the product, not beside it,
+       so it can run to a normal measure */
+    max-width: 38ch;
+    font-size: var(--fs-lead);
+    line-height: 1.55;
+    color: var(--ink-70);
+  }
+}

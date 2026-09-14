@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#F4EFE4" />
+
+    <!--
+      The hero art is the first thing on the page and it differs by viewport.
+      Preloading both behind the same media queries the <picture> uses means the
+      right one is already in cache when the element mounts — the phone never
+      pays for the desktop plate, and neither swaps in late.
+    -->
+    <link rel="preload" as="image" href="/media/mobile-hero.png" media="(max-width: 860px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/media/hero_bg.png" media="(min-width: 861px)" fetchpriority="high" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&family=Outfit:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <title>ShrooMEED — Daily Shield</title>
+    <meta name="description" content="ShrooMEED® Daily Shield — respiratory wellness powered by Cordyceps militaris. The daily performance ritual." />
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link rel="preconnect" href="https://cdn.fontshare.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://api.fontshare.com/v2/css?f%5B%5D=cabinet-grotesk@800,700,500&f%5B%5D=switzer@400,500,600,700&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,73 @@
+.section {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  isolation: isolate;
+  overflow: clip;
+  padding: var(--section-y) var(--gutter);
+  text-align: center;
+}
+
+/* the same warm bloom the hero puts behind the product */
+.halo {
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  bottom: -34%;
+  width: min(124vw, 1180px);
+  aspect-ratio: 1;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(207, 126, 73, 0.17) 0%,
+    rgba(184, 95, 46, 0.06) 40%,
+    rgba(184, 95, 46, 0) 72%
+  );
+  pointer-events: none;
+}
+
+.copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--stack-md);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: 800;
+  letter-spacing: var(--tracking-display);
+  line-height: var(--leading-display);
+  text-transform: uppercase;
+}
+
+.body {
+  max-width: 44ch;
+  font-size: var(--fs-lead);
+  line-height: var(--leading-lead);
+  color: var(--ink-70);
+  text-wrap: pretty;
+}
+
+@media (max-width: 860px) {
+  .title {
+    font-size: clamp(2.4rem, 12.5vw, 4rem);
+    text-align: center;
+  }
+
+  /*
+    Each SplitText line is a flex row, so it packs to the start of its own box
+    regardless of the section's `text-align`. With the headline set over two
+    lines of different widths on a handset ("join" / "the ritual."), the short
+    one has to be told to sit under the middle of the long one.
+  */
+  .title > span { justify-content: center; }
+}

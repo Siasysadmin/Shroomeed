@@ -1,0 +1,80 @@
+/* ------------------------------------------------------------------
+   The curtain.
+
+   `--wa-bg` should be the colour the page itself is, not black or white —
+   the reveal then reads as the paper thinning rather than as a panel
+   being pulled off the front of a differently-coloured site.
+
+   Every value here is a `--wa-*` property read with a fallback, so this
+   folder needs nothing declared outside it, and setting any of them on an
+   ancestor overrides it.
+------------------------------------------------------------------- */
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: var(--wa-z, 400);
+  display: grid;
+  place-items: center;
+  background: var(--wa-bg, #f4efe4);
+  overflow: hidden;
+  /* the animation is decorative; it must never eat a tap meant for the page */
+  touch-action: none;
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity, filter;
+}
+
+/* Warmth with no edge and no direction — the opposite of a sun flare. */
+.halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(78vw, 660px);
+  aspect-ratio: 1;
+  translate: -50% -52%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--wa-halo-inner, rgba(224, 179, 74, 0.2)) 0%,
+    var(--wa-halo-outer, rgba(184, 95, 46, 0.08)) 40%,
+    transparent 70%
+  );
+  filter: blur(26px);
+  pointer-events: none;
+}
+
+/* A single ring, thrown off once as the cap opens. */
+.ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(40vw, 320px);
+  aspect-ratio: 1;
+  translate: -50% -56%;
+  border-radius: 50%;
+  border: 1px solid var(--wa-ripple, rgba(224, 179, 74, 0.55));
+  pointer-events: none;
+}
+
+.spore {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--wa-gold, #e0b34a);
+  filter: blur(0.4px);
+  pointer-events: none;
+}
+
+/* The curtain still shows and still lifts; only the drifting stops. */
+@media (prefers-reduced-motion: reduce) {
+  .halo,
+  .ripple,
+  .spore {
+    display: none;
+  }
+}

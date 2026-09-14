@@ -1,0 +1,103 @@
+.hero {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  display: block;
+  isolation: isolate;
+  overflow: clip;
+}
+
+.scene {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-inline: var(--gutter);
+  min-height: 100svh;
+}
+
+.copyCol {
+  width: 100%;
+  max-width: 600px;
+  z-index: 2;
+  padding-block: clamp(96px, 12svh, 132px) clamp(44px, 6svh, 80px);
+}
+
+.cueCol {
+  position: absolute;
+  bottom: clamp(28px, 4svh, 52px);
+  right: var(--gutter);
+}
+
+@media (max-width: 1100px) {
+  .cueCol { display: none; }
+}
+
+/* ------------------------------------------------------------------
+   Handset hero
+
+   The mobile plate is shot portrait: the bottle sits in the upper two
+   thirds and the lower third is empty sand. That empty sand is the copy
+   area — the words are set into the picture's own blank space rather
+   than under it, which is why the art is full-bleed here and the scene
+   is anchored to the bottom of the frame instead of centred in it.
+
+   A paper scrim rises behind the copy so the type is legible whatever
+   the crop does at a given aspect ratio; over the flat sand it is
+   nearly invisible, and it only ever has to do real work on a short
+   or unusually wide handset.
+------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .hero {
+    min-height: 100svh;
+    display: block;
+    overflow: clip;
+  }
+
+  .scene {
+    position: relative;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: stretch;
+    padding: 0 var(--gutter) clamp(34px, 8vw, 56px);
+  }
+
+  .scene::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: auto 0 0 0;
+    height: 62%;
+    pointer-events: none;
+    background: linear-gradient(
+      to top,
+      rgba(244, 239, 228, 0.94) 0%,
+      rgba(244, 239, 228, 0.86) 34%,
+      rgba(244, 239, 228, 0.5) 62%,
+      rgba(244, 239, 228, 0) 100%
+    );
+  }
+
+  .copyCol {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: none;
+    padding-block: 0;
+  }
+
+  .cueCol { display: none; }
+}
+
+/* Held sideways there is no lower third to speak of, so the scrim carries
+   the copy instead of the picture's own empty space. */
+@media (max-width: 860px) and (orientation: landscape) and (max-height: 560px) {
+  .scene {
+    justify-content: center;
+    padding-block: calc(var(--nav-inset) + 64px) clamp(20px, 5vw, 32px);
+  }
+  .scene::before { height: 100%; }
+}

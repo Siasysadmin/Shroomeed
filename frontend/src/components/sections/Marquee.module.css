@@ -1,0 +1,62 @@
+.strip {
+  position: relative;
+  z-index: 3;
+  overflow: clip;
+  background: var(--ink);
+  color: var(--paper-70);
+  padding-block: 15px;
+  /* the grain overlay is multiply; keep it off the one dark band */
+  isolation: isolate;
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  animation: slide 42s linear infinite;
+}
+.track[data-still] { animation: none; }
+.strip:hover .track { animation-play-state: paused; }
+
+@keyframes slide {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: clamp(16px, 2.4vw, 34px);
+  padding-right: clamp(16px, 2.4vw, 34px);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.spark { color: var(--gold); font-size: 0.85em; }
+
+@media (max-width: 860px) {
+  .strip { padding-block: 13px; }
+  .track { animation-duration: 30s; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track { animation: none; }
+  .strip { overflow-x: auto; }
+}
+
+@media (max-width: 640px) {
+  .item {
+    gap: 14px;
+    padding-right: 14px;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+  }
+}

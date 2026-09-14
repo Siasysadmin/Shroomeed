@@ -1,0 +1,123 @@
+.page {
+  padding-top: var(--nav-height, 0); 
+}
+
+/* ---- Science Hero (Blends with Ingredients) ---- */
+.scienceHero {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% -20%, var(--amber-deep) 0%, var(--ink) 70%);
+  color: var(--paper);
+  padding: calc(var(--nav-height, 0px) + var(--gutter)) var(--gutter) var(--gutter);
+}
+
+.heroInner {
+  max-width: 1280px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  margin-bottom: var(--stack-md);
+  font-size: var(--fs-micro);
+  font-weight: 500;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--paper-52);
+}
+
+.mark {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex: none;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 8vw, 5rem);
+  font-weight: normal;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+.intro {
+  max-width: 50ch;
+  margin-top: 32px;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  color: var(--paper-70);
+  text-wrap: balance;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: clamp(2.2rem, 10vw, 3.5rem);
+  }
+}
+
+/* ---- Explanation Section ---- */
+.explanation {
+  padding: clamp(60px, 8vw, 120px) var(--gutter);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+}
+
+.inner {
+  max-width: 800px;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--stack-md);
+}
+
+.expTitle {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.expBody {
+  font-family: var(--font-sans);
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink-70);
+  text-wrap: pretty;
+}
+
+@media (max-width: 860px) {
+  /* This hero centres its content in a full-height frame, which on a tall
+     handset leaves the title sitting exactly where the floating nav is.
+     A top pad biases the block downward, out from under the capsule. */
+  .scienceHero {
+    min-height: 88svh;
+    padding-top: calc(var(--nav-inset) + var(--safe-top) + 96px);
+  }
+
+  .intro { max-width: none; margin-top: var(--stack-md); }
+
+  .explanation { padding-block: clamp(48px, 12vw, 72px); }
+}
+
+@media (max-width: 860px) {
+  .title { font-size: clamp(1.95rem, 8.6vw, 3rem); }
+
+  /* the hero centres its column, so a wrapped line has to centre too —
+     `text-align` does not reach flex children */
+  .title > span { justify-content: center; }
+}

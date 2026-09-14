@@ -1,0 +1,170 @@
+.section {
+  background: var(--amber);
+  color: var(--paper);
+  padding: clamp(64px, 8vw, 100px) 0;
+  overflow: hidden;
+}
+
+.header {
+  padding: 0 var(--gutter);
+  max-width: 1440px;
+  margin-inline: auto;
+  margin-bottom: var(--stack-lg);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  max-width: 25ch;
+  line-height: 1.1;
+}
+
+.carouselWrap {
+  width: 100%;
+  overflow: hidden;
+  padding: 20px 0;
+}
+
+.track {
+  display: flex;
+  gap: 24px;
+  width: max-content;
+  animation: scroll 40s linear infinite;
+}
+
+.track:hover {
+  animation-play-state: paused;
+}
+
+.card {
+  position: relative;
+  width: clamp(280px, 30vw, 400px);
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  filter: grayscale(80%) opacity(0.85);
+  transition: filter 0.4s ease, transform 0.4s ease;
+  cursor: pointer;
+  background: var(--ink);
+}
+
+.card:hover {
+  filter: grayscale(0%) opacity(1);
+  transform: translateY(-4px);
+}
+
+.cardBg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.cardContent {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 24px;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0) 25%,
+    rgba(0, 0, 0, 0) 50%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  color: #fff;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+
+.cardRole {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  opacity: 0.9;
+  text-wrap: pretty;
+}
+
+.footerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 0 var(--gutter);
+  margin-top: clamp(48px, 6vw, 80px);
+}
+
+.footerLeft {
+  flex: 1;
+  max-width: 60ch;
+  font-size: clamp(1.2rem, 1.6vw, 1.4rem);
+  line-height: 1.5;
+  color: var(--paper);
+}
+
+.footerLeft strong {
+  font-weight: 700;
+}
+
+.footerRight {
+  flex: none;
+  font-size: clamp(1.2rem, 1.6vw, 1.4rem);
+  font-weight: 500;
+  color: var(--paper);
+  text-align: right;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* We duplicate the array, so scroll exactly half the total width */
+    transform: translateX(calc(-50% - 12px)); 
+  }
+}
+
+@media (max-width: 768px) {
+  .footerRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .footerRight {
+    text-align: left;
+  }
+  .card {
+    width: clamp(260px, 70vw, 320px);
+  }
+}
+
+@media (max-width: 640px) {
+  .section { padding-block: clamp(48px, 12vw, 72px); }
+
+  .title { font-size: clamp(1.75rem, 7.6vw, 2.4rem); max-width: none; }
+
+  .card { width: clamp(230px, 66vw, 290px); }
+
+  .cardTitle { font-size: 1.25rem; }
+
+  .cardContent { padding: 18px; }
+
+  /* the belt is twice as long as the desktop track relative to the frame,
+     so it needs to move faster to read as the same speed */
+  .track { animation-duration: 28s; gap: 16px; }
+}
