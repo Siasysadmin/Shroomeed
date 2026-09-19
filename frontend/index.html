@@ -6,6 +6,14 @@
     <meta name="theme-color" content="#F4EFE4" />
 
     <!--
+      The tab icon. The mark is padded to a square so no browser squashes it
+      when it scales it down to 16px, and it keeps its transparent background
+      so it sits on a light or a dark tab strip equally well.
+    -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+
+    <!--
       The hero art is the first thing on the page and it differs by viewport.
       Preloading both behind the same media queries the <picture> uses means the
       right one is already in cache when the element mounts — the phone never

@@ -173,10 +173,32 @@
   border-top: 1px solid var(--paper-08);
 }
 
+/* Legal line + registered premises. Allowed to take the free width and wrap
+   onto a second line rather than push the seals off the row. */
+.legalBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 340px;
+  min-width: 0;
+  max-width: 62ch;
+}
+
 .legal {
   font-size: var(--fs-micro);
   letter-spacing: 0.04em;
+  line-height: 1.5;
   color: var(--paper-38);
+  text-wrap: pretty;
+}
+
+.address {
+  font-style: normal;
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  color: var(--paper-38);
+  text-wrap: pretty;
 }
 
 .verifiedBadges {
@@ -293,6 +315,8 @@
     gap: 20px;
   }
 
+  .legalBlock { max-width: none; flex: 0 0 auto; }
+
   .badgeSeal { width: 66px; height: 66px; }
   .badgeTitle { font-size: 14px; }
   .badgeSub { font-size: 8px; }
@@ -301,7 +325,8 @@
      past both gutters and was silently clipped by the footer. Sized to the
      glyph count instead, it lands inside the frame on every phone. */
   .giantBrand {
-    font-size: 17vw;
+    /* font-size: 17vw; */
+    font-size: 14.5vw;
     line-height: 0.86;
     margin-inline: 0;
     margin-top: var(--stack-md);

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Reveal } from '../common/Reveal'
 import { commerce, brand } from '../../content/site'
@@ -13,24 +13,61 @@ export function ProductShowcase() {
   const { add } = useCart()
 
   /*
-    The box-open clip plays on hover with a mouse and on tap with a finger —
-    never on its own, and with no play button drawn over it.
+    The box-open clip plays on hover with a mouse. A touch screen has no
+    hover to give it, and a box that only opens if you happen to tap it is a
+    box most phone visitors never see open — so there it plays itself the
+    moment it scrolls into view, and again each time it comes back.
 
     It ships in two encodings. The WebM carries a real alpha channel, which
     every Chromium/Firefox engine composites; WebKit cannot, and paints the
     transparent area solid. Every iPhone browser is WebKit, so they get the
     plain H.264 cut instead. The `#t=0.001` fragment makes iOS draw the first
-    frame as a poster, so the closed box is visible before the first tap.
+    frame as a poster, so the closed box is visible before it plays.
   */
   const canHover = useMediaQuery('(hover: hover) and (pointer: fine)')
   const [boxSrc] = useState(() =>
     isWebKit() ? '/media/h_p.mp4#t=0.001' : '/media/h_p.webm'
   )
+  const boxRef = useRef(null)
 
   const playBox = (video) => {
     video.currentTime = 0
     video.play()?.catch(() => {})
   }
+
+  /*
+    iOS decides whether a video may play by itself, and whether to draw its
+    own play button over it, from the `muted` and `playsinline` *attributes*.
+    React writes `muted` as a property only, so on an iPhone this clip counted
+    as sound-on: it was refused a silent start and got the tap-to-play chrome
+    instead. Written here, it is a silent inline clip and neither happens.
+  */
+  useEffect(() => {
+    const video = boxRef.current
+    if (!video) return
+    video.muted = true
+    video.defaultMuted = true
+    video.setAttribute('muted', '')
+    video.setAttribute('playsinline', '')
+    video.setAttribute('webkit-playsinline', '')
+  }, [])
+
+  useEffect(() => {
+    // With a mouse the hover handlers own the clip; nothing observes it.
+    if (canHover) return undefined
+    const video = boxRef.current
+    if (!video) return undefined
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) playBox(video)
+        else video.pause()
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(video)
+    return () => observer.disconnect()
+  }, [canHover])
 
   const handleAddToCart = () => {
     add(1)
@@ -66,12 +103,14 @@ export function ProductShowcase() {
           <Reveal delay={0.4} className={styles.productStage}>
             <div className={styles.boxHoverContainer}>
               <video
+                ref={boxRef}
                 src={boxSrc}
                 className={styles.productVideo}
                 muted
                 playsInline
                 preload="auto"
                 disablePictureInPicture
+                controls={false}
                 onMouseEnter={canHover ? (e) => e.currentTarget.play() : undefined}
                 onMouseLeave={
                   canHover

@@ -389,3 +389,127 @@ a.card:hover {
   .seeAllWrap { width: 100%; }
   .seeAllLink { width: 100%; justify-content: center; }
 }
+
+/* ------------------------------------------------------------------
+   Video cards, Instagram cards
+
+   A clip plays inside its own card. The frame is a button the size of
+   the card sitting above the video and below the caption layer, so a tap
+   anywhere on the picture starts or pauses it, while the mute toggle and
+   the "View post" link stay clickable in their corners.
+------------------------------------------------------------------- */
+
+.videoHit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.videoHit:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
+}
+
+/* The name and the quote are labels on the picture, not targets — clicks
+   land on the player underneath them. */
+.cardVideo .mediaName,
+.cardVideo .mediaRole,
+.cardVideo .mediaQuote {
+  pointer-events: none;
+}
+
+/* The play badge is decoration over the hit area; the frame itself takes
+   the click, so this must never swallow one. */
+.playBtn { pointer-events: none; }
+
+.mediaRole {
+  position: relative;
+  z-index: 2;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.muteBtn {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background var(--dur-xs) linear;
+}
+.muteBtn:hover { background: rgba(0, 0, 0, 0.75); }
+.muteBtn svg { width: 17px; height: 17px; }
+
+.postLink {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 3;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+}
+.postLink:hover { background: rgba(0, 0, 0, 0.78); }
+
+.igBadge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.igBadge svg { width: 17px; height: 17px; }
+
+/* A video card holds a <video>, not an <img>, in the same slot. */
+video.mediaBg {
+  background: #100d0b;
+}
+
+@media (max-width: 860px) {
+  .muteBtn { width: 42px; height: 42px; right: 12px; bottom: 12px; }
+  .postLink { top: 12px; left: 12px; padding: 8px 13px; }
+  .igBadge { width: 32px; height: 32px; top: 12px; right: 12px; }
+}
+
+/* The wall before anything has been published to it. */
+.emptyNote {
+  margin-top: clamp(40px, 6vw, 64px);
+  padding: clamp(32px, 5vw, 48px) 24px;
+  border: 1px dashed var(--ink-14);
+  border-radius: 20px;
+  background: var(--paper-warm);
+  color: var(--ink-52);
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  text-align: center;
+  text-wrap: pretty;
+}

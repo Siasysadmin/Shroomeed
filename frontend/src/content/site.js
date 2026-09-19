@@ -168,43 +168,22 @@ export const homeFaq = {
   ],
 }
 
-/** Reviews live on the product page, not the home page. */
+/**
+ * The review wall and the testimonial deck.
+ *
+ * Only the section's own labels live here. Every card on the wall and every
+ * clip in the deck comes from the admin panel — nothing is seeded, so what a
+ * visitor sees is exactly what has been published and nothing that has not.
+ * Until the first review is published, the sections say so rather than
+ * standing in demo copy.
+ */
 export const proof = {
   eyebrow: 'Reviews',
   headline: [{ words: ['High', 'performers', "don't", 'exaggerate.'] }],
-  rating: { score: '4.9', label: 'Trusted by 1,200+ high performers' },
-  /**
-   * The seeded wall.
-   *
-   * These used to be written in a strict text / media / text / media
-   * alternation, which read as a layout pattern rather than as a feed — the
-   * wall looked arranged instead of posted. Each entry now carries the date it
-   * went up and the wall sorts on that alone, newest first, exactly as it does
-   * for reviews published from the admin panel. The mix of kinds down a column
-   * is whatever the dates happen to produce.
-   */
-  people: [
-    { postedAt: '2026-09-08', type: 'text', name: 'Arjun M.', role: 'Hyrox athlete', quote: 'The biggest difference is my sustained energy throughout the day. No crashes, just clean stamina.' },
-    { postedAt: '2026-09-06', type: 'text', name: 'Priya S.', role: 'Designer', quote: 'I’ve been taking this for a month. My breathing feels so much clearer during morning runs. Definitely a game-changer!' },
-    { postedAt: '2026-09-05', type: 'video', name: 'Chef Mareya', image: 'https://images.unsplash.com/photo-1594381898411-846e7d193883?q=80&w=600&auto=format&fit=crop' },
-    { postedAt: '2026-09-03', type: 'image', name: 'Sarah', image: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=600&auto=format&fit=crop' },
-    { postedAt: '2026-09-01', type: 'text', name: 'Neha R.', role: 'Founder', quote: 'This has been incredible for my respiratory health. I can finally take deep, clear breaths again.' },
-    { postedAt: '2026-08-29', type: 'image', name: 'Anna Davey', image: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=600&auto=format&fit=crop' },
-    { postedAt: '2026-08-27', type: 'text', name: 'Rohan', role: 'Cyclist', quote: 'A game changer for my VO2 max. Highly recommend it to anyone serious about endurance.' },
-    { postedAt: '2026-08-25', type: 'video', name: 'David B.', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=600&auto=format&fit=crop', caption: 'Start the day with David Beckham?' },
-    { postedAt: '2026-08-22', type: 'text', name: 'Kabir S.', role: 'Run club lead', quote: 'My recovery times have noticeably improved since I started taking this daily.' },
-    { postedAt: '2026-08-20', type: 'text', name: 'Sam T.', role: 'Marathoner', quote: 'Been looking for a clean Cordyceps supplement for years. This is the only one I trust before long runs.' },
-    { postedAt: '2026-08-18', type: 'image', name: 'James W.', image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?q=80&w=600&auto=format&fit=crop' },
-    { postedAt: '2026-08-15', type: 'video', name: 'Dr. Alisha', image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=600&auto=format&fit=crop', caption: 'Why I recommend Daily Shield' },
-    { postedAt: '2026-08-12', type: 'text', name: 'Vikram', role: 'Triathlete', quote: 'Noticeable difference in my breathing during intense cardio. Zero jitters, just raw stamina.' },
-    { postedAt: '2026-08-09', type: 'image', name: 'Elena', image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?q=80&w=600&auto=format&fit=crop' },
-    { postedAt: '2026-08-06', type: 'text', name: 'Elena M.', role: 'Yoga Instructor', quote: 'The adaptogenic blend has completely stabilized my morning energy levels. I feel incredibly grounded.' },
-    { postedAt: '2026-08-03', type: 'text', name: 'Jordan', role: 'CrossFit Coach', quote: 'Recovery is faster, and I don\'t feel the afternoon crash anymore. Pure, clean energy that lasts all day.' },
-    { postedAt: '2026-07-31', type: 'video', name: 'Marcus', image: 'https://images.unsplash.com/photo-1599058917212-97d1421008d5?q=80&w=600&auto=format&fit=crop', caption: 'My 30-day results' },
-    { postedAt: '2026-07-28', type: 'image', name: 'Morning Ritual', image: 'https://images.unsplash.com/photo-1542282811-943ef1a6777f?q=80&w=600&auto=format&fit=crop' },
-    { postedAt: '2026-07-25', type: 'text', name: 'Anita K.', role: 'Writer', quote: 'Living in a polluted city, this has been my armor. My airways feel incredibly clear and I breathe so much easier.' },
-  ],
+  empty: 'No reviews have been published yet. The wall fills up as customers send theirs in.',
 
+  /** Shown in the deck frame on Home and Shop until a clip is uploaded. */
+  showcaseEmpty: 'Customer clips appear here as they come in.',
 }
 
 /** The buying page. */
@@ -268,7 +247,11 @@ export const footer = {
     },
   ],
   badges: ['ISO Certified', 'GMP Certified', 'FSSAI Approved', 'Zero heavy metals', 'Third party tested'],
-  legal: 'ShrooMEED™ 2026. FSSAI Lic. No. 21426590000646. The Daily Performance Ritual.',
+  /* Entity name and premises exactly as they read on the FSSAI registration
+     certificate (Reg. No. 21426590000646, Shivpuri, Madhya Pradesh). */
+  legal: 'ShrooMEED™ Nutraceutical 2026. FSSAI Lic. No. 21426590000646. The Daily Performance Ritual.',
+  address:
+    'House No. 395, Thandi Sadak, Hanuman Gali, Near Shivam Namkeen, Shivpuri, Madhya Pradesh – 473551, India',
 }
 
 export const researchData = {

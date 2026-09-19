@@ -218,3 +218,28 @@
   align-items: center;
   gap: 10px;
 }
+
+/* ------------------------------------------------------------------
+   No player chrome on either clip in this section.
+
+   Both videos here are artwork — the pack turning on the left, the box
+   opening on the right. WebKit draws its own centred play button over an
+   inline video it considers stopped, and on an iPhone that button sat in
+   the middle of the product shot looking like part of the design. These
+   clips have no controls to offer, so the chrome is removed outright;
+   playback is driven by hover on a desktop and by scroll on a phone.
+------------------------------------------------------------------- */
+.slideImg::-webkit-media-controls,
+.slideImg::-webkit-media-controls-panel,
+.slideImg::-webkit-media-controls-start-playback-button,
+.slideImg::-webkit-media-controls-play-button,
+.slideImg::-webkit-media-controls-overlay-play-button,
+.productVideo::-webkit-media-controls,
+.productVideo::-webkit-media-controls-panel,
+.productVideo::-webkit-media-controls-start-playback-button,
+.productVideo::-webkit-media-controls-play-button,
+.productVideo::-webkit-media-controls-overlay-play-button {
+  display: none !important;
+  -webkit-appearance: none;
+  opacity: 0;
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { API_URL, api, mediaUrl } from '../lib/api'
 import './Admin.css'
 
@@ -219,22 +219,121 @@ function AdminLogin({ onLogin }) {
 
 /* ---------------------------------------------------------------- reviews */
 
+/**
+ * The four kinds of card the wall can show.
+ *
+ * The admin picks the kind first and the form then asks for exactly what that
+ * kind needs — a video card asks for a clip, a text card does not ask for a
+ * file at all. One form that showed every field at once could be filled in
+ * ways the wall cannot render (a "video card" with no video), so the choice
+ * comes first and the server checks the same rule again on arrival.
+ */
+const REVIEW_TYPES = [
+  {
+    id: 'text',
+    label: 'Text',
+    hint: 'A written review. No media — the words carry the card.',
+  },
+  {
+    id: 'image',
+    label: 'Photo + text',
+    hint: 'A photo with the name and, if you add it, the review text over it.',
+  },
+  {
+    id: 'video',
+    label: 'Video + text',
+    hint: 'A clip that plays on the wall. Add a poster frame to control the still.',
+  },
+  {
+    id: 'instagram',
+    label: 'Instagram post',
+    hint: 'Paste the post link, pull its cover in, and the card opens the post.',
+  },
+]
+
+const EMPTY_FIELDS = { name: '', role: '', quote: '' }
+
+/**
+ * A local preview for a file the admin just picked, revoked when it changes.
+ *
+ * The url is derived during the render rather than set from an effect, so it
+ * is always in step with the file it belongs to. Held in state it lagged by a
+ * render: clearing the file left the old url behind for one pass, and the
+ * preview — which reads `file.name` — rendered against a file that was
+ * already gone.
+ */
+function useObjectUrl(file) {
+  const url = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
+
+  useEffect(
+    () => () => {
+      if (url) URL.revokeObjectURL(url)
+    },
+    [url]
+  )
+
+  return url
+}
+
 function ReviewsPanel() {
   const [rows, setRows] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [busyId, setBusyId] = useState(null)
+
+  // the composer
+  const [type, setType] = useState('text')
+  const [fields, setFields] = useState(EMPTY_FIELDS)
+  const [imageFile, setImageFile] = useState(null)
+  const [videoFile, setVideoFile] = useState(null)
+  const [posterFile, setPosterFile] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(null)
   const [notice, setNotice] = useState(null)
 
   // Instagram cover lookup
   const [postUrl, setPostUrl] = useState('')
-  const [cover, setCover] = useState(null) // { image, title }
+  const [cover, setCover] = useState(null) // { image, title, source }
   const [fetching, setFetching] = useState(false)
   const [coverError, setCoverError] = useState('')
+
+  const imagePreview = useObjectUrl(imageFile)
+  const videoPreview = useObjectUrl(videoFile)
+  const posterPreview = useObjectUrl(posterFile)
 
   const load = useCallback(() => {
     api.get('/api/reviews').then((data) => setRows(Array.isArray(data) ? data : [])).catch(() => {})
   }, [])
 
   useEffect(load, [load])
+
+  const set = (key) => (event) => setFields((prev) => ({ ...prev, [key]: event.target.value }))
+
+  const resetForm = () => {
+    setFields(EMPTY_FIELDS)
+    setImageFile(null)
+    setVideoFile(null)
+    setPosterFile(null)
+    setPostUrl('')
+    setCover(null)
+    setCoverError('')
+    setProgress(null)
+  }
+
+  /** Switching kind clears what the new kind cannot use, and keeps the words. */
+  const chooseType = (next) => {
+    setType(next)
+    setNotice(null)
+    setCoverError('')
+    if (next !== 'video') {
+      setVideoFile(null)
+      setPosterFile(null)
+    }
+    if (next === 'text') setImageFile(null)
+    if (next !== 'instagram') {
+      setCover(null)
+      setPostUrl('')
+    }
+  }
 
   /**
    * Paste a post link, get its cover back. The server does the reading and
@@ -250,47 +349,88 @@ function ReviewsPanel() {
     try {
       const data = await api.get(`/api/post-preview?url=${encodeURIComponent(url)}`)
       setCover(data)
+      setImageFile(null)
     } catch (err) {
       setCoverError(err.message)
     }
     setFetching(false)
   }
 
+  /** The same rule the server enforces, said early enough to be useful. */
+  const validate = () => {
+    if (!fields.name.trim()) return 'Add the reviewer’s name.'
+    if (type === 'text' && !fields.quote.trim()) return 'A text card needs the review text.'
+    if (type === 'image' && !imageFile) return 'Choose a photo for this card.'
+    if (type === 'video' && !videoFile) return 'Choose a video file for this card.'
+    if (type === 'instagram') {
+      if (!/^https?:\/\//i.test(postUrl.trim())) return 'Paste the full post link, starting with https://'
+      if (!cover?.image && !imageFile) return 'Fetch the post’s cover, or upload one yourself.'
+    }
+    return ''
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
-    setLoading(true)
-    setNotice(null)
-
-    const formData = new FormData(event.target)
-    // An auto-fetched cover travels as a path, not a file.
-    if (cover?.image && !formData.get('image')?.size) {
-      formData.delete('image')
-      formData.set('image', cover.image)
-      formData.set('coverSource', cover.source || postUrl)
+    const problem = validate()
+    if (problem) {
+      setNotice({ tone: 'bad', text: problem })
+      return
     }
 
+    const data = new FormData()
+    data.set('type', type)
+    data.set('name', fields.name.trim())
+    data.set('role', fields.role.trim())
+    data.set('quote', fields.quote.trim())
+
+    if (type === 'image' && imageFile) data.set('image', imageFile)
+    if (type === 'video') {
+      data.set('video', videoFile)
+      if (posterFile) data.set('poster', posterFile)
+    }
+    if (type === 'instagram') {
+      data.set('redirectUrl', postUrl.trim())
+      if (imageFile) {
+        data.set('image', imageFile)
+      } else if (cover?.image) {
+        // an auto-fetched cover travels as a path, not a file
+        data.set('image', cover.image)
+        data.set('coverSource', cover.source || postUrl.trim())
+      }
+    }
+
+    setLoading(true)
+    setNotice(null)
+    setProgress(0)
     try {
-      await api.form('/api/reviews', formData)
-      setNotice({ tone: 'ok', text: 'Review published to the wall.' })
-      event.target.reset()
-      setCover(null)
-      setPostUrl('')
+      await api.upload('/api/reviews', data, setProgress)
+      setNotice({ tone: 'ok', text: 'Published — it is now the first card on the wall.' })
+      resetForm()
       load()
     } catch (err) {
       setNotice({ tone: 'bad', text: err.message })
+      setProgress(null)
     }
     setLoading(false)
   }
 
-  const remove = async (id) => {
-    if (!window.confirm('Delete this review? This cannot be undone.')) return
+  const remove = async (row) => {
+    const what = row.video ? 'review and its video' : 'review'
+    if (!window.confirm(`Delete this ${what}? This cannot be undone.`)) return
+    setBusyId(row._id)
     try {
-      await api.del(`/api/reviews/${id}`)
-      load()
+      await api.del(`/api/reviews/${row._id}`)
+      setRows((prev) => prev.filter((entry) => entry._id !== row._id))
+      setNotice({ tone: 'ok', text: 'Review deleted.' })
     } catch (err) {
       setNotice({ tone: 'bad', text: err.message })
     }
+    setBusyId(null)
   }
+
+  const chosen = REVIEW_TYPES.find((entry) => entry.id === type) || REVIEW_TYPES[0]
+  const visible = filter === 'all' ? rows : rows.filter((row) => row.type === filter)
+  const countOf = (id) => (id === 'all' ? rows.length : rows.filter((row) => row.type === id).length)
 
   return (
     <>
@@ -298,99 +438,220 @@ function ReviewsPanel() {
         <div className="admin-form-header">
           <h2>Add Review</h2>
           <p className="admin-form-desc">
-            Published reviews appear at the top of the wall — newest first.
+            Pick what kind of card this is. Published reviews appear at the top of the
+            wall — newest first.
           </p>
         </div>
 
         {notice && <Notice notice={notice} />}
 
+        <div className="admin-tabs" role="tablist" aria-label="Card type">
+          {REVIEW_TYPES.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="tab"
+              aria-selected={type === entry.id}
+              className={`admin-tab-btn ${type === entry.id ? 'active' : ''}`}
+              onClick={() => chooseType(entry.id)}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+        <p className="admin-type-hint">{chosen.hint}</p>
+
         <form className="admin-form" onSubmit={handleSubmit}>
           <div className="admin-form-row">
             <div className="admin-form-group">
-              <label>Customer Name</label>
-              <input type="text" name="name" placeholder="e.g. Jane Doe" required />
+              <label htmlFor="rv-name">Customer Name</label>
+              <input
+                id="rv-name"
+                type="text"
+                value={fields.name}
+                onChange={set('name')}
+                placeholder="e.g. Jane Doe"
+              />
             </div>
 
             <div className="admin-form-group">
-              <label>Role / Title</label>
-              <input type="text" name="role" placeholder="e.g. Marathon Runner" />
-            </div>
-          </div>
-
-          <div className="admin-form-group">
-            <label>Instagram / Post Link</label>
-            <div className="admin-inline-row">
+              <label htmlFor="rv-role">Role / Title</label>
               <input
-                type="url"
-                name="redirectUrl"
-                placeholder="https://www.instagram.com/p/..."
-                value={postUrl}
-                onChange={(event) => setPostUrl(event.target.value)}
+                id="rv-role"
+                type="text"
+                value={fields.role}
+                onChange={set('role')}
+                placeholder="e.g. Marathon Runner"
               />
-              <button
-                type="button"
-                className="admin-secondary-btn"
-                onClick={fetchCover}
-                disabled={fetching || !postUrl.trim()}
-              >
-                {fetching ? 'Fetching…' : 'Fetch cover'}
-              </button>
             </div>
-            <span className="admin-input-hint">
-              Clicking the card opens this link. Press <strong>Fetch cover</strong> to pull the
-              post’s image in automatically — no need to upload one.
-            </span>
           </div>
 
-          {coverError && <Notice notice={{ tone: 'bad', text: coverError }} />}
+          {/* ---- photo ---- */}
+          {type === 'image' && (
+            <div className="admin-form-group">
+              <label>Photo</label>
+              {imagePreview ? (
+                <MediaPreview
+                  onClear={() => setImageFile(null)}
+                  title={imageFile.name}
+                  meta={`${(imageFile.size / (1024 * 1024)).toFixed(1)} MB`}
+                >
+                  <img src={imagePreview} alt="Selected" />
+                </MediaPreview>
+              ) : (
+                <FilePicker
+                  accept="image/*"
+                  onPick={setImageFile}
+                  icon="image"
+                  hint="JPG, PNG or WebP — up to 10MB"
+                />
+              )}
+            </div>
+          )}
 
-          {cover?.image && (
-            <div className="admin-cover-preview">
-              <img src={mediaUrl(cover.image)} alt="Fetched cover" />
-              <div>
-                <strong>Cover fetched</strong>
-                <p>{cover.title || 'This image will be used as the card cover.'}</p>
-                <button type="button" className="admin-link-btn" onClick={() => setCover(null)}>
-                  Remove and upload manually
+          {/* ---- video ---- */}
+          {type === 'video' && (
+            <>
+              <div className="admin-form-group">
+                <label>Video file</label>
+                {videoPreview ? (
+                  <MediaPreview
+                    onClear={() => setVideoFile(null)}
+                    title={videoFile.name}
+                    meta={`${(videoFile.size / (1024 * 1024)).toFixed(1)} MB`}
+                  >
+                    <video src={videoPreview} muted playsInline controls preload="metadata" />
+                  </MediaPreview>
+                ) : (
+                  <FilePicker
+                    accept="video/*"
+                    onPick={setVideoFile}
+                    icon="video"
+                    hint="MP4, WebM or MOV — up to 200MB"
+                  />
+                )}
+              </div>
+
+              <div className="admin-form-group">
+                <label>Poster frame <span className="admin-optional">optional</span></label>
+                {posterPreview ? (
+                  <MediaPreview
+                    onClear={() => setPosterFile(null)}
+                    title={posterFile.name}
+                    meta="Shown before the clip plays"
+                  >
+                    <img src={posterPreview} alt="Poster" />
+                  </MediaPreview>
+                ) : (
+                  <FilePicker
+                    accept="image/*"
+                    onPick={setPosterFile}
+                    icon="image"
+                    hint="Leave empty to use the video’s own first frame"
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ---- instagram ---- */}
+          {type === 'instagram' && (
+            <div className="admin-form-group">
+              <label htmlFor="rv-link">Instagram / Post Link</label>
+              <div className="admin-inline-row">
+                <input
+                  id="rv-link"
+                  type="url"
+                  placeholder="https://www.instagram.com/p/..."
+                  value={postUrl}
+                  onChange={(event) => setPostUrl(event.target.value)}
+                />
+                <button
+                  type="button"
+                  className="admin-secondary-btn"
+                  onClick={fetchCover}
+                  disabled={fetching || !postUrl.trim()}
+                >
+                  {fetching ? 'Fetching…' : 'Fetch cover'}
                 </button>
               </div>
-            </div>
-          )}
+              <span className="admin-input-hint">
+                Clicking the card opens this link. Press <strong>Fetch cover</strong> to pull the
+                post’s image in automatically — or upload one below if Instagram refuses.
+              </span>
 
-          <div className="admin-form-group">
-            <label>Card Type</label>
-            <select name="type" className="admin-select" defaultValue="image">
-              <option value="image">Photo card</option>
-              <option value="video">Video card (shows a play button)</option>
-              <option value="text">Text only</option>
-            </select>
-          </div>
-
-          {!cover?.image && (
-            <div className="admin-form-group">
-              <label>Cover Photo</label>
-              <div className="admin-file-upload-box">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="admin-upload-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                <div className="admin-upload-text">
-                  <span className="admin-upload-link">Click to upload</span> or drag and drop
+              {coverError && (
+                <div style={{ marginTop: '12px' }}>
+                  <Notice notice={{ tone: 'bad', text: coverError }} />
                 </div>
-                <p className="admin-upload-hint">Leave empty for a text-only review</p>
-                <input type="file" name="image" accept="image/*" className="admin-file-input" />
-              </div>
+              )}
+
+              {cover?.image && !imageFile && (
+                <div style={{ marginTop: '12px' }}>
+                  <MediaPreview
+                    onClear={() => setCover(null)}
+                    title="Cover fetched"
+                    meta={cover.title || 'This image will be used as the card cover.'}
+                  >
+                    <img src={mediaUrl(cover.image)} alt="Fetched cover" />
+                  </MediaPreview>
+                </div>
+              )}
+
+              {!cover?.image && (
+                <div style={{ marginTop: '12px' }}>
+                  {imagePreview ? (
+                    <MediaPreview
+                      onClear={() => setImageFile(null)}
+                      title={imageFile.name}
+                      meta="Uploaded cover"
+                    >
+                      <img src={imagePreview} alt="Selected cover" />
+                    </MediaPreview>
+                  ) : (
+                    <FilePicker
+                      accept="image/*"
+                      onPick={setImageFile}
+                      icon="image"
+                      hint="Upload the cover yourself"
+                    />
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           <div className="admin-form-group">
-            <label>Review Text</label>
-            <textarea name="quote" rows="4" placeholder="What did they say?"></textarea>
+            <label htmlFor="rv-quote">
+              Review Text
+              {type !== 'text' && <span className="admin-optional">optional</span>}
+            </label>
+            <textarea
+              id="rv-quote"
+              rows="4"
+              value={fields.quote}
+              onChange={set('quote')}
+              placeholder="What did they say?"
+            />
             <span className="admin-input-hint">
-              Required for a text card; optional caption on a photo or video card.
+              {type === 'text'
+                ? 'This is the card — write it as they said it.'
+                : 'Sits under the name on the card. Leave it empty for media on its own.'}
             </span>
           </div>
+
+          {loading && progress !== null && (
+            <div className="admin-progress" role="status" aria-live="polite">
+              <div className="admin-progress-track">
+                <div className="admin-progress-bar" style={{ width: `${progress}%` }} />
+              </div>
+              <span>{progress < 100 ? `Uploading… ${progress}%` : 'Processing…'}</span>
+            </div>
+          )}
 
           <div className="admin-form-actions">
             <button type="submit" className="admin-submit-btn" disabled={loading}>
-              {loading ? 'Saving…' : 'Publish Review'}
+              {loading ? 'Publishing…' : 'Publish Review'}
             </button>
           </div>
         </form>
@@ -402,27 +663,56 @@ function ReviewsPanel() {
           <p className="admin-form-desc">Newest first — the same order the wall uses.</p>
         </div>
 
-        {rows.length === 0 ? (
-          <p className="admin-empty">Nothing published yet.</p>
+        <div className="admin-tabs">
+          {[{ id: 'all', label: 'All' }, ...REVIEW_TYPES].map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              className={`admin-tab-btn ${filter === entry.id ? 'active' : ''}`}
+              onClick={() => setFilter(entry.id)}
+            >
+              {entry.label} ({countOf(entry.id)})
+            </button>
+          ))}
+        </div>
+
+        {visible.length === 0 ? (
+          <p className="admin-empty">
+            {rows.length === 0 ? 'Nothing published yet.' : 'No cards of this kind yet.'}
+          </p>
         ) : (
           <ul className="admin-list">
-            {rows.map((row) => (
+            {visible.map((row) => (
               <li key={row._id} className="admin-list-row">
-                {row.image ? (
-                  <img className="admin-list-thumb" src={mediaUrl(row.image)} alt="" />
-                ) : (
-                  <span className="admin-list-thumb admin-list-thumb--text">Aa</span>
-                )}
+                <ReviewThumb row={row} />
+
                 <div className="admin-list-body">
                   <strong>{row.name}</strong>
                   {row.role && <span className="admin-list-meta">{row.role}</span>}
                   {row.quote && <p className="admin-list-quote">{row.quote}</p>}
                   <span className="admin-list-meta">
-                    {new Date(row.createdAt).toLocaleString()} · {row.type}
+                    <span className="admin-pill admin-pill--type">{row.type}</span>
+                    {new Date(row.createdAt).toLocaleString()}
                   </span>
+                  {row.redirectUrl && (
+                    <a
+                      className="admin-list-link"
+                      href={row.redirectUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open the post ↗
+                    </a>
+                  )}
                 </div>
-                <button type="button" className="admin-danger-btn" onClick={() => remove(row._id)}>
-                  Delete
+
+                <button
+                  type="button"
+                  className="admin-danger-btn"
+                  disabled={busyId === row._id}
+                  onClick={() => remove(row)}
+                >
+                  {busyId === row._id ? 'Deleting…' : 'Delete'}
                 </button>
               </li>
             ))}
@@ -433,12 +723,75 @@ function ReviewsPanel() {
   )
 }
 
+/** The still that stands for a published card in the list. */
+function ReviewThumb({ row }) {
+  if (row.type === 'video' && row.video) {
+    return (
+      <video
+        className="admin-list-thumb"
+        src={mediaUrl(row.video)}
+        poster={row.image ? mediaUrl(row.image) : undefined}
+        muted
+        playsInline
+        preload="metadata"
+      />
+    )
+  }
+  if (row.image) return <img className="admin-list-thumb" src={mediaUrl(row.image)} alt="" />
+  return <span className="admin-list-thumb admin-list-thumb--text">Aa</span>
+}
+
+/** A drop zone that reports what was picked instead of relying on form state. */
+function FilePicker({ accept, onPick, icon, hint }) {
+  return (
+    <div className="admin-file-upload-box">
+      {icon === 'video' ? (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="admin-upload-icon"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+      ) : (
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="admin-upload-icon"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+      )}
+      <div className="admin-upload-text">
+        <span className="admin-upload-link">Click to upload</span> or drag and drop
+      </div>
+      <p className="admin-upload-hint">{hint}</p>
+      <input
+        type="file"
+        accept={accept}
+        className="admin-file-input"
+        onChange={(event) => onPick(event.target.files?.[0] || null)}
+      />
+    </div>
+  )
+}
+
+/** What was picked, shown back, with one way to undo it. */
+function MediaPreview({ children, title, meta, onClear }) {
+  return (
+    <div className="admin-cover-preview">
+      {children}
+      <div>
+        <strong>{title}</strong>
+        <p>{meta}</p>
+        <button type="button" className="admin-link-btn" onClick={onClear}>
+          Remove
+        </button>
+      </div>
+    </div>
+  )
+}
+
 /* ----------------------------------------------------------------- videos */
 
 function VideosPanel() {
   const [rows, setRows] = useState([])
+  const [fields, setFields] = useState({ name: '', role: '' })
+  const [videoFile, setVideoFile] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(null)
+  const [busyId, setBusyId] = useState(null)
   const [notice, setNotice] = useState(null)
+
+  const videoPreview = useObjectUrl(videoFile)
 
   const load = useCallback(() => {
     api.get('/api/showcase-videos').then((data) => setRows(Array.isArray(data) ? data : [])).catch(() => {})
@@ -446,25 +799,52 @@ function VideosPanel() {
 
   useEffect(load, [load])
 
+  const set = (key) => (event) => setFields((prev) => ({ ...prev, [key]: event.target.value }))
+
   const handleSubmit = async (event) => {
     event.preventDefault()
+    if (!fields.name.trim()) {
+      setNotice({ tone: 'bad', text: 'Add the customer’s name.' })
+      return
+    }
+    if (!videoFile) {
+      setNotice({ tone: 'bad', text: 'Choose a video file to upload.' })
+      return
+    }
+
+    const data = new FormData()
+    data.set('name', fields.name.trim())
+    data.set('role', fields.role.trim())
+    data.set('video', videoFile)
+
     setLoading(true)
     setNotice(null)
+    setProgress(0)
     try {
-      await api.form('/api/showcase-videos', new FormData(event.target))
-      setNotice({ tone: 'ok', text: 'Video saved.' })
-      event.target.reset()
+      await api.upload('/api/showcase-videos', data, setProgress)
+      setNotice({ tone: 'ok', text: 'Video saved — it now leads the deck on Home and Shop.' })
+      setFields({ name: '', role: '' })
+      setVideoFile(null)
+      setProgress(null)
       load()
     } catch (err) {
       setNotice({ tone: 'bad', text: err.message })
+      setProgress(null)
     }
     setLoading(false)
   }
 
-  const remove = async (id) => {
-    if (!window.confirm('Delete this video?')) return
-    await api.del(`/api/showcase-videos/${id}`).catch(() => {})
-    load()
+  const remove = async (row) => {
+    if (!window.confirm('Delete this video? This cannot be undone.')) return
+    setBusyId(row._id)
+    try {
+      await api.del(`/api/showcase-videos/${row._id}`)
+      setRows((prev) => prev.filter((entry) => entry._id !== row._id))
+      setNotice({ tone: 'ok', text: 'Video deleted.' })
+    } catch (err) {
+      setNotice({ tone: 'bad', text: err.message })
+    }
+    setBusyId(null)
   }
 
   return (
@@ -472,7 +852,10 @@ function VideosPanel() {
       <div className="admin-form-card">
         <div className="admin-form-header">
           <h2>Add Showcase Video</h2>
-          <p className="admin-form-desc">The split-layout section on Home and Shop.</p>
+          <p className="admin-form-desc">
+            The deck beside the headline on Home and Shop. Newest plays first, then
+            it cycles. With nothing uploaded the section does not appear at all.
+          </p>
         </div>
 
         {notice && <Notice notice={notice} />}
@@ -480,27 +863,56 @@ function VideosPanel() {
         <form className="admin-form" onSubmit={handleSubmit}>
           <div className="admin-form-row">
             <div className="admin-form-group">
-              <label>Customer Name</label>
-              <input type="text" name="name" placeholder="e.g. David B." required />
+              <label htmlFor="sv-name">Customer Name</label>
+              <input
+                id="sv-name"
+                type="text"
+                value={fields.name}
+                onChange={set('name')}
+                placeholder="e.g. David B."
+              />
             </div>
 
             <div className="admin-form-group">
-              <label>Role / Title</label>
-              <input type="text" name="role" placeholder="e.g. High Performer" />
+              <label htmlFor="sv-role">Role / Title</label>
+              <input
+                id="sv-role"
+                type="text"
+                value={fields.role}
+                onChange={set('role')}
+                placeholder="e.g. High Performer"
+              />
             </div>
           </div>
 
           <div className="admin-form-group">
-            <label>Upload Video File</label>
-            <div className="admin-file-upload-box">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="admin-upload-icon"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-              <div className="admin-upload-text">
-                <span className="admin-upload-link">Click to upload</span> or drag and drop
-              </div>
-              <p className="admin-upload-hint">MP4, WebM or OGG (max. 50MB)</p>
-              <input type="file" name="video" accept="video/*" className="admin-file-input" required />
-            </div>
+            <label>Video file</label>
+            {videoFile && videoPreview ? (
+              <MediaPreview
+                onClear={() => setVideoFile(null)}
+                title={videoFile.name}
+                meta={`${(videoFile.size / (1024 * 1024)).toFixed(1)} MB`}
+              >
+                <video src={videoPreview} muted playsInline controls preload="metadata" />
+              </MediaPreview>
+            ) : (
+              <FilePicker
+                accept="video/*"
+                onPick={setVideoFile}
+                icon="video"
+                hint="MP4, WebM or MOV — up to 200MB. Portrait clips fit the frame best."
+              />
+            )}
           </div>
+
+          {loading && progress !== null && (
+            <div className="admin-progress" role="status" aria-live="polite">
+              <div className="admin-progress-track">
+                <div className="admin-progress-bar" style={{ width: `${progress}%` }} />
+              </div>
+              <span>{progress < 100 ? `Uploading… ${progress}%` : 'Processing…'}</span>
+            </div>
+          )}
 
           <div className="admin-form-actions">
             <button type="submit" className="admin-submit-btn" disabled={loading}>
@@ -513,20 +925,37 @@ function VideosPanel() {
       <div className="admin-form-card">
         <div className="admin-form-header">
           <h2>Uploaded ({rows.length})</h2>
+          <p className="admin-form-desc">Newest first — the order the deck plays them in.</p>
         </div>
+
         {rows.length === 0 ? (
-          <p className="admin-empty">No videos yet.</p>
+          <p className="admin-empty">
+            No videos yet, so the testimonial section is hidden on Home and Shop.
+          </p>
         ) : (
           <ul className="admin-list">
             {rows.map((row) => (
               <li key={row._id} className="admin-list-row">
+                <video
+                  className="admin-list-thumb"
+                  src={mediaUrl(row.videoUrl)}
+                  poster={row.thumbnail ? mediaUrl(row.thumbnail) : undefined}
+                  muted
+                  playsInline
+                  preload="metadata"
+                />
                 <div className="admin-list-body">
                   <strong>{row.name}</strong>
                   {row.role && <span className="admin-list-meta">{row.role}</span>}
                   <span className="admin-list-meta">{new Date(row.createdAt).toLocaleString()}</span>
                 </div>
-                <button type="button" className="admin-danger-btn" onClick={() => remove(row._id)}>
-                  Delete
+                <button
+                  type="button"
+                  className="admin-danger-btn"
+                  disabled={busyId === row._id}
+                  onClick={() => remove(row)}
+                >
+                  {busyId === row._id ? 'Deleting…' : 'Delete'}
                 </button>
               </li>
             ))}
@@ -536,6 +965,7 @@ function VideosPanel() {
     </>
   )
 }
+
 
 /* -------------------------------------------------------------- questions */
 

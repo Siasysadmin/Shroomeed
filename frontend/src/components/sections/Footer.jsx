@@ -52,7 +52,10 @@ export function Footer() {
         </div>
 
         <div className={styles.footerBottom}>
-          <p className={styles.legal}>{footer.legal}</p>
+          <div className={styles.legalBlock}>
+            <p className={styles.legal}>{footer.legal}</p>
+            <address className={styles.address}>{footer.address}</address>
+          </div>
           <ul className={styles.verifiedBadges}>
             <li className={styles.badgeSeal}>
               <span className={styles.badgeTitle}>ISO</span>

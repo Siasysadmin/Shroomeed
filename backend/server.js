@@ -36,16 +36,89 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname))
   }
 })
-const upload = multer({ storage })
+
+/**
+ * Size ceilings, per field.
+ *
+ * Multer's `limits` are per request, not per field, so the video ceiling is
+ * the one that applies and a photo is checked separately once its size is
+ * known. Without a ceiling a mis-picked 2GB file would be streamed to disk in
+ * full before anything could reject it.
+ */
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024 // 10MB
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024 // 200MB
+
+/** Reject by field: an .mp4 in the cover slot is a mistake, not a cover. */
+function fileFilter(req, file, cb) {
+  const isImageField = ['image', 'poster', 'thumbnail'].includes(file.fieldname)
+  const wanted = isImageField ? 'image/' : 'video/'
+  if (!file.mimetype.startsWith(wanted)) {
+    cb(new Error(`The ${file.fieldname} field takes ${isImageField ? 'an image' : 'a video'} file.`))
+    return
+  }
+  cb(null, true)
+}
+
+const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_VIDEO_BYTES, files: 2 } })
+
+/** The three media slots a review can arrive with. */
+const reviewUpload = upload.fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
+  { name: 'poster', maxCount: 1 },
+])
+
+/**
+ * Delete files this server wrote.
+ *
+ * Only paths under `/uploads` are touched — a review whose cover is a remote
+ * url has nothing of ours to remove, and a crafted path must never be able to
+ * reach outside the uploads folder.
+ */
+function removeUploads(...paths) {
+  for (const value of paths) {
+    if (typeof value !== 'string' || !value.startsWith('/uploads/')) continue
+    const resolved = path.resolve(uploadsDir, path.basename(value))
+    if (path.dirname(resolved) !== path.resolve(uploadsDir)) continue
+    fs.promises.unlink(resolved).catch(() => {
+      /* already gone, or never written — nothing to clean up */
+    })
+  }
+}
+
+/** Byte counts are unreadable in an error message; megabytes are not. */
+const mb = (bytes) => Math.round((bytes / (1024 * 1024)) * 10) / 10
+
+/** Whatever multer managed to write before the request was rejected. */
+function discardUploaded(req) {
+  const groups = req.files ? Object.values(req.files).flat() : req.file ? [req.file] : []
+  removeUploads(...groups.map((file) => `/uploads/${file.filename}`))
+}
 
 // --- SCHEMAS ---
+/**
+ * One card on the review wall.
+ *
+ * Four kinds, and the kind decides which fields carry the card:
+ *
+ *   text        `quote` only — no media at all
+ *   image       `image` (uploaded photo) + optional `quote` as the caption
+ *   video       `video` (uploaded clip) + optional `image` as its poster frame
+ *   instagram   `redirectUrl` to the post + `image` as the cover pulled off it
+ *
+ * `image` doubles as the poster on a video card because the storefront only
+ * ever needs one still per card, whatever produced it.
+ */
+const REVIEW_TYPES = ['text', 'image', 'video', 'instagram']
+
 const ReviewSchema = new mongoose.Schema({
   name: { type: String, required: true },
   role: { type: String },
   quote: { type: String },
   image: { type: String },
+  video: { type: String },
   redirectUrl: { type: String },
-  type: { type: String, default: 'text' }, // 'text' | 'image' | 'video'
+  type: { type: String, default: 'text', enum: REVIEW_TYPES },
   /** Where the cover came from when it was pulled off a post rather than uploaded. */
   coverSource: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
@@ -134,43 +207,94 @@ app.get('/api/reviews', async (req, res) => {
   }
 })
 
-app.post('/api/reviews', upload.single('image'), async (req, res) => {
+/**
+ * Publish a card.
+ *
+ * The card's kind is decided here from what actually arrived, not from what
+ * the form claimed: a "video card" with no clip attached would render as an
+ * empty black frame on the wall, so the request is refused instead of stored.
+ * Everything already written to disk is removed on the way out — a rejected
+ * submission must not leave a 100MB orphan behind.
+ */
+app.post('/api/reviews', reviewUpload, async (req, res) => {
   try {
-    const { name, role, quote, redirectUrl, type } = req.body
-    let image = ''
-    let coverSource = ''
+    const name = String(req.body.name || '').trim()
+    const role = String(req.body.role || '').trim()
+    const quote = String(req.body.quote || '').trim()
+    const redirectUrl = String(req.body.redirectUrl || '').trim()
+    const requested = REVIEW_TYPES.includes(req.body.type) ? req.body.type : 'text'
 
-    if (req.file) {
-      image = `/uploads/${req.file.filename}`
-    } else if (req.body.image) {
-      // a cover the admin pulled off a post instead of uploading a file
-      image = req.body.image
-      coverSource = req.body.coverSource || redirectUrl || ''
+    const imageFile = req.files?.image?.[0]
+    const videoFile = req.files?.video?.[0]
+    const posterFile = req.files?.poster?.[0]
+
+    const fail = (message) => {
+      discardUploaded(req)
+      res.status(400).json({ error: message })
+      return null
     }
 
-    // A card with no cover can only be a text card, whatever the form said.
-    const resolvedType = !image ? 'text' : (type || 'image')
+    if (!name) return fail('Add the reviewer’s name.')
+    if (redirectUrl && !/^https?:\/\//i.test(redirectUrl)) {
+      return fail('The post link needs to start with http:// or https://')
+    }
+    if (imageFile && imageFile.size > MAX_IMAGE_BYTES) {
+      return fail(`That photo is ${mb(imageFile.size)}MB. Images are capped at ${mb(MAX_IMAGE_BYTES)}MB.`)
+    }
+    if (posterFile && posterFile.size > MAX_IMAGE_BYTES) {
+      return fail(`That poster is ${mb(posterFile.size)}MB. Images are capped at ${mb(MAX_IMAGE_BYTES)}MB.`)
+    }
 
-    const review = new Review({
+    const video = videoFile ? `/uploads/${videoFile.filename}` : ''
+
+    // A still comes from one of three places, in order of how deliberate it is:
+    // an uploaded poster, an uploaded photo, then a cover fetched off a post.
+    let image = ''
+    let coverSource = ''
+    if (posterFile) {
+      image = `/uploads/${posterFile.filename}`
+    } else if (imageFile) {
+      image = `/uploads/${imageFile.filename}`
+    } else if (req.body.image) {
+      image = String(req.body.image)
+      coverSource = String(req.body.coverSource || redirectUrl || '')
+    }
+
+    // What the card actually is, given what actually arrived.
+    let type = requested
+    if (video) type = 'video'
+    else if (type === 'video') return fail('Attach a video file, or pick another card type.')
+    else if (type === 'instagram' && !redirectUrl) return fail('Paste the post link for an Instagram card.')
+    else if (type === 'instagram' && !image) return fail('Fetch or upload a cover for the Instagram card.')
+    else if (type === 'image' && !image) return fail('Upload a photo, or pick another card type.')
+    else if (!image) type = 'text'
+
+    if (type === 'text' && !quote) return fail('A text card needs the review text.')
+
+    const review = await Review.create({
       name,
       role,
       quote,
       redirectUrl,
       image,
+      video,
       coverSource,
-      type: resolvedType,
+      type,
     })
-    await review.save()
     res.status(201).json(review)
   } catch (err) {
+    discardUploaded(req)
     res.status(500).json({ error: err.message })
   }
 })
 
+/** Taking a card down takes its uploaded files with it. */
 app.delete('/api/reviews/:id', async (req, res) => {
   try {
-    await Review.findByIdAndDelete(req.params.id)
-    res.json({ message: 'Review deleted' })
+    const review = await Review.findByIdAndDelete(req.params.id)
+    if (!review) return res.status(404).json({ error: 'Review not found' })
+    removeUploads(review.image, review.video)
+    res.json({ message: 'Review deleted', id: review._id })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -186,27 +310,54 @@ app.get('/api/showcase-videos', async (req, res) => {
   }
 })
 
-app.post('/api/showcase-videos', upload.single('video'), async (req, res) => {
-  try {
-    const { name, role } = req.body
-    let videoUrl = ''
-    if (req.file) {
-      videoUrl = `/uploads/${req.file.filename}`
-    } else if (req.body.videoUrl) {
-      videoUrl = req.body.videoUrl
+app.post(
+  '/api/showcase-videos',
+  upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]),
+  async (req, res) => {
+    try {
+      const name = String(req.body.name || '').trim()
+      const role = String(req.body.role || '').trim()
+      const videoFile = req.files?.video?.[0]
+      const thumbFile = req.files?.thumbnail?.[0]
+
+      const fail = (message) => {
+        discardUploaded(req)
+        res.status(400).json({ error: message })
+        return null
+      }
+
+      if (!name) return fail('Add the customer’s name.')
+
+      // A remote url is still accepted, for a clip already hosted elsewhere.
+      const videoUrl = videoFile
+        ? `/uploads/${videoFile.filename}`
+        : String(req.body.videoUrl || '').trim()
+      if (!videoUrl) return fail('Attach a video file, or give a video url.')
+
+      if (thumbFile && thumbFile.size > MAX_IMAGE_BYTES) {
+        return fail(`That thumbnail is ${mb(thumbFile.size)}MB. Images are capped at ${mb(MAX_IMAGE_BYTES)}MB.`)
+      }
+
+      const video = await ShowcaseVideo.create({
+        name,
+        role,
+        videoUrl,
+        thumbnail: thumbFile ? `/uploads/${thumbFile.filename}` : '',
+      })
+      res.status(201).json(video)
+    } catch (err) {
+      discardUploaded(req)
+      res.status(500).json({ error: err.message })
     }
-    const video = new ShowcaseVideo({ name, role, videoUrl })
-    await video.save()
-    res.status(201).json(video)
-  } catch (err) {
-    res.status(500).json({ error: err.message })
   }
-})
+)
 
 app.delete('/api/showcase-videos/:id', async (req, res) => {
   try {
-    await ShowcaseVideo.findByIdAndDelete(req.params.id)
-    res.json({ message: 'Video deleted' })
+    const video = await ShowcaseVideo.findByIdAndDelete(req.params.id)
+    if (!video) return res.status(404).json({ error: 'Video not found' })
+    removeUploads(video.videoUrl, video.thumbnail)
+    res.json({ message: 'Video deleted', id: video._id })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -536,6 +687,31 @@ app.get('/api/post-preview', async (req, res) => {
       error: aborted ? 'That link took too long to respond.' : `Could not reach that link: ${err.message}`,
     })
   }
+})
+
+/**
+ * Upload failures in words the admin can act on.
+ *
+ * Multer throws before any route body runs, so without this an oversized clip
+ * came back as a bare 500 and the panel could only say "Request failed" — the
+ * one case where the operator most needs to be told what to do differently.
+ */
+app.use((err, req, res, next) => {
+  if (!err) return next()
+  discardUploaded(req)
+
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? `That file is too large. Videos are capped at ${mb(MAX_VIDEO_BYTES)}MB and images at ${mb(MAX_IMAGE_BYTES)}MB.`
+        : err.code === 'LIMIT_UNEXPECTED_FILE'
+          ? `Unexpected file field "${err.field}".`
+          : err.message
+    return res.status(400).json({ error: message })
+  }
+
+  // fileFilter rejections arrive as plain Errors — they are the admin's to fix.
+  return res.status(400).json({ error: err.message || 'Upload failed.' })
 })
 
 // Connect Database & Start Server
