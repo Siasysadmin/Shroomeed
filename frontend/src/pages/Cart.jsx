@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { SplitText } from '../components/common/SplitText'
@@ -5,21 +6,168 @@ import { Reveal } from '../components/common/Reveal'
 import { EASE_OUT_EXPO } from '../lib/motion'
 import { brand, cart as copy, commerce, product } from '../content/site'
 import { formatPrice, useCart } from '../lib/cart'
+import { API_URL } from '../lib/api'
 import styles from './Cart.module.css'
 
-/**
- * One SKU, so the cart is one line and a quantity — no table scaffolding for
- * rows that cannot exist. The summary sticks so the total stays in view while
- * the quantity changes, and the empty state is a real state rather than a
- * blank page: it says what the product is and offers the way back.
- */
+/** Razorpay ka widget ek script hai; zaroorat par ek baar load karo. */
+function loadRazorpay() {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true)
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.onload = () => resolve(true)
+    script.onerror = () => resolve(false)
+    document.body.appendChild(script)
+  })
+}
+
+const EMPTY_FORM = { name: '', email: '', phone: '', address: '' }
+
 export default function Cart() {
   const reduced = useReducedMotion()
   const { qty, setQuantity, remove, subtotal, freeShipping } = useCart()
 
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const [placedOrderId, setPlacedOrderId] = useState('')
+
   const shortfall = commerce.freeShippingOver - subtotal
   const unitPrice = qty >= 3 ? 2550 : 3000
   const supplyText = `${qty * 60} CAPSULES · ${qty} MONTH${qty > 1 ? 'S' : ''} · SM-DS-${qty * 60}`
+
+  const setField = (key) => (event) =>
+    setForm((current) => ({ ...current, [key]: event.target.value }))
+
+  function validate() {
+    if (!form.name.trim()) return 'Please enter your name.'
+    if (!/^\S+@\S+\.\S+$/.test(form.email.trim())) return 'Please enter a valid email.'
+    if (!/^[0-9]{10}$/.test(form.phone.replace(/\D/g, '').slice(-10))) {
+      return 'Please enter a 10-digit phone number.'
+    }
+    if (form.address.trim().length < 12) return 'Please enter your full delivery address.'
+    return ''
+  }
+
+  async function handleCheckout() {
+    setError('')
+
+    const problem = validate()
+    if (problem) {
+      setError(problem)
+      return
+    }
+
+    setBusy(true)
+    try {
+      const ready = await loadRazorpay()
+      if (!ready) throw new Error('Could not load the payment window. Check your connection.')
+
+      const createRes = await fetch(`${API_URL}/api/payment/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qty }),
+      })
+      const created = await createRes.json()
+      if (!createRes.ok) throw new Error(created?.error || 'Could not start payment.')
+
+      const rzp = new window.Razorpay({
+        key: created.keyId,
+        order_id: created.orderId,
+        amount: created.amount,
+        currency: created.currency,
+        name: 'ShrooMEED',
+        description: brand.product || 'Daily Shield',
+        prefill: {
+          name: form.name.trim(),
+          email: form.email.trim(),
+          contact: form.phone.replace(/\D/g, '').slice(-10),
+        },
+        theme: { color: '#D4AF37' },
+        modal: {
+          ondismiss: () => {
+            setBusy(false)
+            setError('Payment window closed before the payment went through.')
+          },
+        },
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch(`${API_URL}/api/payment/verify`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                customer: {
+                  name: form.name.trim(),
+                  email: form.email.trim(),
+                  phone: form.phone.replace(/\D/g, '').slice(-10),
+                  address: form.address.trim(),
+                },
+              }),
+            })
+            const verified = await verifyRes.json()
+            if (!verifyRes.ok) throw new Error(verified?.error || 'Could not confirm the order.')
+
+                          try {
+              const saved = JSON.parse(localStorage.getItem('shroomeed.orders.v1') || '[]')
+              if (verified.viewToken && !saved.includes(verified.viewToken)) {
+                localStorage.setItem(
+                  'shroomeed.orders.v1',
+                  JSON.stringify([verified.viewToken, ...saved].slice(0, 50)),
+                )
+              }
+            } catch {
+              // private window storage block kar sakti hai; order server par phir bhi save hai
+            }
+
+            setPlacedOrderId(verified.orderId)
+            setForm(EMPTY_FORM)
+            remove()
+          } catch (err) {
+            setError(
+              `${err.message} Your payment id is ${response.razorpay_payment_id} — please keep it and contact us.`,
+            )
+          } finally {
+            setBusy(false)
+          }
+        },
+      })
+
+      rzp.on('payment.failed', (event) => {
+        setBusy(false)
+        setError(event?.error?.description || 'Payment failed. Please try again.')
+      })
+
+      rzp.open()
+    } catch (err) {
+      setBusy(false)
+      setError(err.message)
+    }
+  }
+
+  if (placedOrderId) {
+    return (
+      <section className={styles.page} aria-labelledby="cart-title">
+        <header className={styles.head}>
+      <SplitText lines={[{ words: ['thank'] }, { words: ['you.'], accent: true }]} className={styles.title} id="cart-title" />
+        </header>
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>Your order is confirmed.</p>
+          <p className={styles.emptyBody}>
+            Order {placedOrderId}. A confirmation is on its way to your email.
+          </p>
+          <Link className={styles.emptyAction} to="/account">
+            View my orders
+            <svg viewBox="0 0 22 10" fill="none" focusable="false" aria-hidden="true">
+              <path d="M0 5h20M16 1l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="square" />
+            </svg>
+          </Link>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className={styles.page} aria-labelledby="cart-title">
@@ -118,6 +266,61 @@ export default function Cart() {
                   )}
                 </p>
               </article>
+
+              <div className={styles.checkoutForm}>
+                <h2 className={styles.formTitle}>Delivery details</h2>
+
+                <div className={styles.formGrid}>
+                  <div className={styles.field}>
+                    <label htmlFor="co-name">Full name</label>
+                    <input
+                      id="co-name"
+                      type="text"
+                      autoComplete="name"
+                      value={form.name}
+                      onChange={setField('name')}
+                      placeholder="Aayan Garg"
+                    />
+                  </div>
+
+                  <div className={styles.field}>
+                    <label htmlFor="co-phone">Phone</label>
+                    <input
+                      id="co-phone"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel"
+                      value={form.phone}
+                      onChange={setField('phone')}
+                      placeholder="9876543210"
+                    />
+                  </div>
+
+                  <div className={`${styles.field} ${styles.fieldWide}`}>
+                    <label htmlFor="co-email">Email</label>
+                    <input
+                      id="co-email"
+                      type="email"
+                      autoComplete="email"
+                      value={form.email}
+                      onChange={setField('email')}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+
+                  <div className={`${styles.field} ${styles.fieldWide}`}>
+                    <label htmlFor="co-address">Delivery address</label>
+                    <textarea
+                      id="co-address"
+                      rows="3"
+                      autoComplete="street-address"
+                      value={form.address}
+                      onChange={setField('address')}
+                      placeholder="House / flat, street, area, city, state, PIN code"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <aside className={styles.summary} aria-label="Order summary">
@@ -142,8 +345,17 @@ export default function Cart() {
                 </p>
               )}
 
-              <button className={styles.checkout} type="button">
-                {copy.checkout}
+              {error && (
+                <p className={styles.payError} role="alert">{error}</p>
+              )}
+
+              <button
+                className={styles.checkout}
+                type="button"
+                onClick={handleCheckout}
+                disabled={busy}
+              >
+                {busy ? 'Please wait…' : copy.checkout}
                 <span aria-hidden="true">{formatPrice(subtotal)}</span>
               </button>
 

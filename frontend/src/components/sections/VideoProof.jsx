@@ -155,9 +155,11 @@ export function VideoProof() {
                       />
                     )}
 
-                    <div className={styles.videoName}>
-                      {clip.name} {clip.role ? `— ${clip.role}` : ''}
-                    </div>
+                                      {isActive && (
+                      <div className={styles.videoName}>
+                        {clip.name} {clip.role ? `— ${clip.role}` : ''}
+                      </div>
+                    )}
 
                     {isActive && (
                       <div className={styles.controls}>

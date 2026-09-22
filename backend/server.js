@@ -6,6 +6,8 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import fs from 'fs'
 import multer from 'multer'
+import Razorpay from 'razorpay'
+import crypto from 'crypto'
 
 dotenv.config()
 
@@ -185,10 +187,32 @@ const OrderSchema = new mongoose.Schema({
   }],
   totalAmount: { type: Number, required: true },
   status: { type: String, default: 'Confirmed' }, // Confirmed, Shipped, In Transit, Delivered
+    paymentStatus: { type: String, default: 'Pending' },
+  razorpayOrderId: { type: String },
+  razorpayPaymentId: { type: String },
+    viewToken: { type: String, index: true },
   deliveryAddress: { type: String },
   createdAt: { type: Date, default: Date.now }
 })
 const Order = mongoose.model('Order', OrderSchema)
+
+// --- RAZORPAY ---
+
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+})
+
+// Daam server par tay hota hai, browser par nahi.
+const UNIT_PRICE = 3000
+const BULK_PRICE = 2550
+const BULK_MIN_QTY = 3
+
+function priceFor(rawQty) {
+  const qty = Math.max(0, Math.min(99, Math.floor(Number(rawQty) || 0)))
+  const unit = qty >= BULK_MIN_QTY ? BULK_PRICE : UNIT_PRICE
+  return { qty, unit, total: qty * unit }
+}
 
 // --- ROUTES ---
 
@@ -363,8 +387,52 @@ app.delete('/api/showcase-videos/:id', async (req, res) => {
   }
 })
 
+// --- ADMIN AUTH ---
+
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase()
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ''
+const ADMIN_SECRET = process.env.ADMIN_SECRET || ''
+const ADMIN_TOKEN_DAYS = 7
+
+function signAdminToken() {
+  const expires = String(Date.now() + ADMIN_TOKEN_DAYS * 24 * 60 * 60 * 1000)
+  const sig = crypto.createHmac('sha256', ADMIN_SECRET).update(expires).digest('hex')
+  return `${expires}.${sig}`
+}
+
+function requireAdmin(req, res, next) {
+  const header = req.headers.authorization || ''
+  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
+  const [expires, sig] = token.split('.')
+
+  if (!ADMIN_SECRET || !expires || !sig || Number(expires) < Date.now()) {
+    return res.status(401).json({ error: 'Please log in again.' })
+  }
+
+  const expected = crypto.createHmac('sha256', ADMIN_SECRET).update(expires).digest('hex')
+  const a = Buffer.from(sig)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ error: 'Please log in again.' })
+  }
+
+  next()
+}
+
+app.post('/api/admin/login', (req, res) => {
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !ADMIN_SECRET) {
+    return res.status(500).json({ error: 'Admin login is not set up on the server.' })
+  }
+  const email = String(req.body?.email || '').trim().toLowerCase()
+  const password = String(req.body?.password || '')
+  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Wrong email or password.' })
+  }
+  res.json({ token: signAdminToken() })
+})
+
 // Orders API
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', requireAdmin, async (req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 })
     res.json(orders)
@@ -373,14 +441,134 @@ app.get('/api/orders', async (req, res) => {
   }
 })
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', requireAdmin, async (req, res) => {
   try {
-    const orderId = '#SHR-' + Math.floor(1000 + Math.random() * 9000)
+       const orderId = '#SHR-' + crypto.randomBytes(3).toString('hex').toUpperCase()
     const order = new Order({ ...req.body, orderId })
     await order.save()
     res.status(201).json(order)
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+
+// Admin: order ka status badalna
+const ORDER_STATUSES = ['Confirmed', 'Shipped', 'In Transit', 'Delivered', 'Cancelled']
+
+app.patch('/api/orders/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const status = String(req.body?.status || '')
+    if (!ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status.' })
+    }
+    const order = await Order.findByIdAndUpdate(req.params.id, { status }, { new: true })
+    if (!order) return res.status(404).json({ error: 'Order not found.' })
+    res.json(order)
+  } catch (err) {
+    res.status(500).json({ error: 'Could not update the order.' })
+  }
+})
+
+// Customer: sirf apne orders (token se)
+app.post('/api/orders/mine', async (req, res) => {
+  try {
+    const tokens = Array.isArray(req.body?.tokens)
+      ? req.body.tokens.filter((t) => typeof t === 'string' && t.length === 48).slice(0, 50)
+      : []
+    if (tokens.length === 0) return res.json([])
+
+    const orders = await Order.find({ viewToken: { $in: tokens } })
+      .sort({ createdAt: -1 })
+      .select('orderId customerName items totalAmount status paymentStatus createdAt -_id')
+
+    res.json(orders)
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load your orders.' })
+  }
+})
+
+
+// --- PAYMENT API ---
+
+app.post('/api/payment/create-order', async (req, res) => {
+  try {
+    const { qty, unit, total } = priceFor(req.body?.qty)
+    if (qty < 1) return res.status(400).json({ error: 'Cart is empty.' })
+
+    const rzpOrder = await razorpay.orders.create({
+      amount: total * 100, // Razorpay paise mein leta hai
+      currency: 'INR',
+      receipt: 'shr_' + Date.now(),
+      notes: { qty: String(qty), unit: String(unit) },
+    })
+
+    res.json({
+      keyId: process.env.RAZORPAY_KEY_ID,
+      orderId: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+    })
+  } catch (err) {
+    console.error('create-order failed:', err)
+    res.status(500).json({ error: 'Could not start payment.' })
+  }
+})
+
+app.post('/api/payment/verify', async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      customer,
+    } = req.body || {}
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ error: 'Incomplete payment details.' })
+    }
+
+    // Signature check — isse pata chalta hai payment sach mein hua hai
+    const expected = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex')
+
+    if (expected !== razorpay_signature) {
+      return res.status(400).json({ error: 'Payment verification failed.' })
+    }
+
+    // Ek hi payment do baar save na ho jaye
+    const already = await Order.findOne({ razorpayPaymentId: razorpay_payment_id })
+      if (already) return res.json({ ok: true, orderId: already.orderId, viewToken: already.viewToken })
+
+    // Amount Razorpay se hi lete hain — browser par bharosa nahi
+    const rzpOrder = await razorpay.orders.fetch(razorpay_order_id)
+    const qty = Math.max(1, Number(rzpOrder.notes?.qty) || 1)
+    const total = Number(rzpOrder.amount) / 100
+    const unit = Math.round(total / qty)
+
+    const orderId = '#SHR-' + crypto.randomBytes(3).toString('hex').toUpperCase()
+
+    const order = await Order.create({
+      orderId,
+      customerName: customer?.name || 'Unknown',
+      customerEmail: customer?.email || '',
+      customerPhone: customer?.phone || '',
+      deliveryAddress: customer?.address || '',
+      items: [{ title: 'Daily Shield', quantity: qty, price: unit }],
+      totalAmount: total,
+      status: 'Confirmed',
+      paymentStatus: 'Paid',
+      razorpayOrderId: razorpay_order_id,
+      razorpayPaymentId: razorpay_payment_id,
+      viewToken: crypto.randomBytes(24).toString('hex'),
+    })
+
+       res.status(201).json({ ok: true, orderId: order.orderId, viewToken: order.viewToken })
+  } catch (err) {
+    console.error('verify failed:', err)
+    res.status(500).json({ error: 'Could not confirm the order.' })
   }
 })
 

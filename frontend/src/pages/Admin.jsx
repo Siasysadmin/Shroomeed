@@ -16,6 +16,7 @@ import './Admin.css'
  */
 
 const SECTIONS = [
+  { id: 'orders', label: 'Orders', heading: 'Orders' },
   { id: 'reviews', label: 'Reviews', heading: 'Manage Reviews' },
   { id: 'videos', label: 'Showcase Videos', heading: 'Manage Videos' },
   { id: 'questions', label: 'FAQ Questions', heading: 'Questions from visitors' },
@@ -24,9 +25,9 @@ const SECTIONS = [
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('shroomeed_admin_auth') === 'true'
+    return Boolean(localStorage.getItem('shroomeed_admin_token'))
   })
-  const [section, setSection] = useState('reviews')
+  const [section, setSection] = useState('orders')
   const [newCount, setNewCount] = useState(0)
 
   /** The sidebar badge is the reason to open the Questions tab at all. */
@@ -43,6 +44,7 @@ export default function Admin() {
   }, [isAuthenticated, refreshNewCount])
 
   const handleLogout = () => {
+      localStorage.removeItem('shroomeed_admin_token')
     localStorage.removeItem('shroomeed_admin_auth')
     setIsAuthenticated(false)
   }
@@ -90,6 +92,7 @@ export default function Admin() {
         </header>
 
         <div className="admin-content-wrapper">
+                    {section === 'orders' && <OrdersPanel onUnauthorized={handleLogout} />}
           {section === 'reviews' && <ReviewsPanel />}
           {section === 'videos' && <VideosPanel />}
           {section === 'questions' && <QuestionsPanel onChange={refreshNewCount} />}
@@ -108,39 +111,38 @@ function AdminLogin({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
 
-  const handleLogin = (e) => {
-    if (e) e.preventDefault()
+   const [loading, setLoading] = useState(false)
+
+  const loginWith = async (email, pass) => {
     setError('')
-
-    const cleanUser = username.trim().toLowerCase()
-    const cleanPass = password.trim()
-
-    const validUsers = [
-      'user-admin@shroomeed.management',
-      'admin@shroomeed.management',
-      'admin',
-      'user-admin'
-    ]
-
-    const validPasses = [
-      'shroomeed@admin',
-      'admin'
-    ]
-
-    if (validUsers.includes(cleanUser) && validPasses.includes(cleanPass)) {
-      localStorage.setItem('shroomeed_admin_auth', 'true')
+    setLoading(true)
+    try {
+      const res = await fetch(`${API_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password: pass }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.token) throw new Error(data?.error || 'Login failed.')
+      localStorage.setItem('shroomeed_admin_token', data.token)
       onLogin()
-    } else {
-      setError('Invalid credentials. Check email & password, or use the 1-Click Login below.')
+    } catch (err) {
+      setError(
+        err.message === 'Failed to fetch'
+          ? 'Could not reach the server. It may be waking up — try again in 30 seconds.'
+          : err.message,
+      )
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleAutoFillAndLogin = () => {
-    setUsername('user-admin@shroomeed.management')
-    setPassword('shroomeed@admin')
-    localStorage.setItem('shroomeed_admin_auth', 'true')
-    onLogin()
+  const handleLogin = (e) => {
+    if (e) e.preventDefault()
+    loginWith(username, password)
   }
+
+ 
 
   return (
     <div className="admin-login-page">
@@ -164,7 +166,7 @@ function AdminLogin({ onLogin }) {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="user-admin@shroomeed.management"
+              placeholder="Email"
               autoComplete="username"
               required
             />
@@ -192,26 +194,13 @@ function AdminLogin({ onLogin }) {
           </div>
 
           <div className="admin-form-actions" style={{ marginTop: '24px', paddingTop: '16px' }}>
-            <button type="submit" className="admin-submit-btn" style={{ width: '100%' }}>
-              Sign In
+                       <button type="submit" className="admin-submit-btn" style={{ width: '100%' }} disabled={loading}>
+              {loading ? 'Signing in…' : 'Sign In'}
             </button>
           </div>
         </form>
 
-        <div className="admin-quick-fill-box">
-          <span className="admin-quick-fill-label">Authorized Credentials</span>
-          <div className="admin-quick-fill-creds">
-            <strong>User:</strong> user-admin@shroomeed.management<br />
-            <strong>Pass:</strong> shroomeed@admin
-          </div>
-          <button
-            type="button"
-            className="admin-quick-fill-btn"
-            onClick={handleAutoFillAndLogin}
-          >
-            One-Click Login as Admin
-          </button>
-        </div>
+      
       </div>
     </div>
   )
@@ -1177,6 +1166,166 @@ function Notice({ notice }) {
     >
       {ok ? '✅ ' : '⚠️ '}
       {notice.text}
+    </div>
+  )
+}
+
+
+
+/* ----------------------------------------------------------------- orders */
+
+const ORDER_STATUSES = ['Confirmed', 'Shipped', 'In Transit', 'Delivered', 'Cancelled']
+
+async function adminFetch(path, options = {}) {
+  const token = localStorage.getItem('shroomeed_admin_token') || ''
+  const res = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    const err = new Error(data?.error || `Request failed (${res.status})`)
+    err.status = res.status
+    throw err
+  }
+  return data
+}
+
+function OrdersPanel({ onUnauthorized }) {
+  const [rows, setRows] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [savingId, setSavingId] = useState('')
+
+  const load = useCallback(() => {
+    setLoading(true)
+    setError('')
+    adminFetch('/api/orders')
+      .then((data) => {
+        const list = Array.isArray(data) ? data : []
+        list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setRows(list)
+      })
+      .catch((err) => {
+        if (err.status === 401) onUnauthorized?.()
+        else setError(err.message)
+      })
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const updateStatus = async (id, status) => {
+    setSavingId(id)
+    try {
+      const updated = await adminFetch(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      })
+      setRows((current) => current.map((row) => (row._id === id ? updated : row)))
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else window.alert(err.message)
+    }
+    setSavingId('')
+  }
+
+  const money = (n) => '₹' + Number(n || 0).toLocaleString('en-IN')
+  const visible = filter === 'all' ? rows : rows.filter((row) => row.status === filter)
+  const paidTotal = rows
+    .filter((row) => row.paymentStatus === 'Paid' && row.status !== 'Cancelled')
+    .reduce((sum, row) => sum + (row.totalAmount || 0), 0)
+
+  return (
+    <div className="admin-form-card">
+      <div className="admin-form-header">
+        <h2>Orders</h2>
+        <p className="admin-form-desc">
+          {rows.length} order{rows.length === 1 ? '' : 's'} · {money(paidTotal)} paid.
+          Change the status as the parcel moves — the customer sees it on their My orders page.
+        </p>
+      </div>
+
+      <div className="admin-tabs" style={{ flexWrap: 'wrap' }}>
+        {['all', ...ORDER_STATUSES].map((value) => (
+          <button
+            key={value}
+            className={`admin-tab-btn ${filter === value ? 'active' : ''}`}
+            onClick={() => setFilter(value)}
+          >
+            {value === 'all' ? 'All' : value}
+            {' '}({value === 'all' ? rows.length : rows.filter((r) => r.status === value).length})
+          </button>
+        ))}
+        <button className="admin-tab-btn" onClick={load} disabled={loading} style={{ marginLeft: 'auto' }}>
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
+      </div>
+
+      {error && <p className="admin-empty" role="alert">{error}</p>}
+
+      {!error && !loading && visible.length === 0 && (
+        <p className="admin-empty">No orders here yet.</p>
+      )}
+
+      {visible.length > 0 && (
+        <ul className="admin-list">
+          {visible.map((row) => (
+            <li key={row._id} className="admin-list-row admin-list-row--stack">
+              <div className="admin-q-head">
+                <strong>{row.orderId}</strong>
+                <span className={`admin-pill ${row.paymentStatus === 'Paid' ? 'admin-pill--new' : ''}`}>
+                  {row.paymentStatus || 'Unknown'}
+                </span>
+                <span className="admin-list-meta">
+                  {new Date(row.createdAt).toLocaleString('en-IN')}
+                </span>
+                <strong style={{ marginLeft: 'auto' }}>{money(row.totalAmount)}</strong>
+              </div>
+
+              <div className="admin-q-text">
+                <div><strong>{row.customerName}</strong></div>
+                <div style={{ marginTop: 4 }}>
+                  <a className="admin-q-email" href={`tel:${row.customerPhone}`}>{row.customerPhone}</a>
+                  {' · '}
+                  <a className="admin-q-email" href={`mailto:${row.customerEmail}`}>{row.customerEmail}</a>
+                </div>
+                <div style={{ whiteSpace: 'pre-line', marginTop: 8 }}>{row.deliveryAddress}</div>
+                <div style={{ marginTop: 8, opacity: 0.75 }}>
+                  {(row.items || []).map((item) => `${item.title} × ${item.quantity}`).join(', ')}
+                </div>
+                {row.razorpayPaymentId && (
+                  <div className="admin-list-meta" style={{ marginTop: 6 }}>
+                    Payment ID: {row.razorpayPaymentId}
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-q-actions">
+                <label className="admin-list-meta" htmlFor={`status-${row._id}`}>Status</label>
+                <select
+                  id={`status-${row._id}`}
+                  value={row.status}
+                  disabled={savingId === row._id}
+                  onChange={(e) => updateStatus(row._id, e.target.value)}
+                  style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', font: 'inherit' }}
+                >
+                  {ORDER_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
