@@ -24,7 +24,7 @@ export const policies = {
       { heading: "Eligibility", body: "You must be at least 18 years old and located in India to place an order with us." },
       { heading: "Product information", body: "Daily Shield is a dietary supplement, not a medicine. It is not intended to diagnose, treat, cure, or prevent any disease. Consult a physician before use if you are pregnant, nursing, on medication, or have a pre-existing medical condition." },
       { heading: "Orders and pricing", body: "All prices are listed in Indian Rupees (INR) and are subject to change without notice. We reserve the right to refuse or cancel any order, including in cases of suspected fraud or pricing errors." },
-      { heading: "Payment", body: "We accept Cash on Delivery and, where enabled, card/UPI payments via Razorpay. Payment must be completed for your order to be processed." },
+      { heading: "Payment", body: "We accept online payments via Razorpay — UPI, cards and netbanking. Payment must be completed for your order to be processed." },
       { heading: "Subscriptions", body: "Your delivery plan (monthly or 3-month) bills and ships automatically at the interval shown at checkout. You can cancel anytime before the next billing cycle by contacting us." },
       { heading: "Shipping and returns", body: "Shipping timelines are covered in our Shipping Policy, and return eligibility is covered in our Refund & Cancellation Policy." },
       { heading: "Intellectual property", body: "All content on this site — text, graphics, logos, and images — is the property of ShrooMEED and may not be reproduced without permission." },
@@ -56,7 +56,7 @@ export const policies = {
       { heading: "The 30-day guarantee", body: "Take Daily Shield for 30 days. If your stamina and breathing haven't noticeably improved, send back the unopened portion for a full refund — no questions asked." },
       { heading: "Eligibility for returns", body: "Returns are accepted within 30 days of delivery for unopened, unused bottles. Please have your order number ready when requesting a return." },
       { heading: "How to request a refund", body: "Contact us with your order number and reason for return. We'll share return instructions and, once we receive and inspect the returned product, process your refund." },
-      { heading: "Refund processing time", body: "Approved refunds are issued to your original payment method (or bank account, for COD orders) within 7–10 business days of us receiving the return." },
+      { heading: "Refund processing time", body: "Approved refunds are issued to your original payment method within 7–10 business days of us receiving the return." },
       { heading: "Order cancellations", body: "You can cancel an order for a full refund any time before it ships. Once an order has shipped, it falls under our standard return policy instead." },
       { heading: "Subscription cancellations", body: "You can cancel your monthly or 3-month delivery plan anytime before the next billing cycle by contacting us — no cancellation fees." },
       { heading: "Contact us", body: "Questions about any of this? Reach us at support@shroomeed.com. Registered office: House no. 395, Thandi Sadak, Hanuman Gali, Near Shivam namkeen, Shivpuri Airport, Madhya Pradesh." }

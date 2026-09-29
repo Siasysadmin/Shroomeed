@@ -780,6 +780,29 @@ function VideosPanel() {
   const [busyId, setBusyId] = useState(null)
   const [notice, setNotice] = useState(null)
 
+    const [pinningId, setPinningId] = useState(null)
+
+  const togglePin = async (row) => {
+    setPinningId(row._id)
+    try {
+      const saved = await adminFetch(`/api/showcase-videos/${row._id}/pin`, {
+        method: 'PATCH',
+        body: JSON.stringify({ pinned: !row.pinned }),
+      })
+      if (Array.isArray(saved)) setRows(saved)
+      setNotice({ tone: 'ok', text: row.pinned ? 'Unpinned.' : 'Pinned to the top.' })
+    } catch (err) {
+      setNotice({
+        tone: 'bad',
+        text: err.status === 401 ? 'Session expired — log out and log in again.' : err.message,
+      })
+      load()
+    } finally {
+      setPinningId(null)
+    }
+  }
+
+
   const videoPreview = useObjectUrl(videoFile)
 
   const load = useCallback(() => {
@@ -914,7 +937,7 @@ function VideosPanel() {
       <div className="admin-form-card">
         <div className="admin-form-header">
           <h2>Uploaded ({rows.length})</h2>
-          <p className="admin-form-desc">Newest first — the order the deck plays them in.</p>
+                <p className="admin-form-desc">Pinned videos play first, then the rest — newest first.</p>
         </div>
 
         {rows.length === 0 ? (
@@ -935,9 +958,21 @@ function VideosPanel() {
                 />
                 <div className="admin-list-body">
                   <strong>{row.name}</strong>
+                                    {row.pinned && <span className="admin-pill admin-pill--new">Pinned</span>}
                   {row.role && <span className="admin-list-meta">{row.role}</span>}
                   <span className="admin-list-meta">{new Date(row.createdAt).toLocaleString()}</span>
                 </div>
+
+                                <button
+                  type="button"
+                  className="admin-secondary-btn"
+                  style={{ marginRight: 8 }}
+                  disabled={pinningId === row._id}
+                  onClick={() => togglePin(row)}
+                >
+                  {pinningId === row._id ? '…' : row.pinned ? 'Unpin' : 'Pin'}
+                </button>
+
                 <button
                   type="button"
                   className="admin-danger-btn"
@@ -1237,6 +1272,95 @@ function OrdersPanel({ onUnauthorized }) {
     setSavingId('')
   }
 
+    const [shipBusy, setShipBusy] = useState('')
+  const [tracking, setTracking] = useState(null)
+  const [pickup, setPickup] = useState({ date: '', time: '14:00:00', count: 1 })
+  const [pickupNote, setPickupNote] = useState('')
+
+
+    /** Order hamesha ke liye hata do — pehle poochh kar. */
+  const removeOrder = async (row) => {
+    const sure = window.confirm(
+      `Delete order ${row.orderId} permanently?\n\nThis cannot be undone.` +
+      (row.delhiveryAwb ? '\n\nNote: the Delhivery shipment will NOT be cancelled.' : '')
+    )
+    if (!sure) return
+
+    setShipBusy(row._id)
+    try {
+      await adminFetch(`/api/orders/${row._id}`, { method: 'DELETE' })
+      setRows((current) => current.filter((r) => r._id !== row._id))
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else window.alert(err.message)
+    }
+    setShipBusy('')
+  }
+
+
+  /** Shipment fail ho gaya tha — dobara banao. */
+  const createShipment = async (row) => {
+    setShipBusy(row._id)
+    try {
+      const updated = await adminFetch(`/api/orders/${row._id}/ship`, { method: 'POST' })
+      setRows((current) => current.map((r) => (r._id === row._id ? updated : r)))
+      window.alert('Shipment created. Waybill: ' + (updated.delhiveryAwb || '—'))
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else window.alert(err.message)
+      load()
+    }
+    setShipBusy('')
+  }
+
+  /** Delhivery se taaza haal laao. */
+  const trackOrder = async (row) => {
+    setShipBusy(row._id)
+    try {
+      const data = await adminFetch(`/api/orders/${row._id}/track`, { method: 'POST' })
+      setRows((current) => current.map((r) => (r._id === row._id ? data.order : r)))
+      setTracking({ orderId: data.order.orderId, ...data.tracking })
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else window.alert(err.message)
+    }
+    setShipBusy('')
+  }
+
+  /** Packing slip — naye tab mein khulega, wahi print karna hai. */
+  const openLabel = async (row) => {
+    setShipBusy(row._id)
+    try {
+      const slip = await adminFetch(`/api/orders/${row._id}/label`)
+      const link =
+        slip?.packages?.[0]?.pdf_download_link ||
+        slip?.packages?.[0]?.pdf_link ||
+        ''
+      if (link) window.open(link, '_blank', 'noopener')
+      else window.alert('Delhivery did not return a label link. Response: ' + JSON.stringify(slip).slice(0, 300))
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else window.alert(err.message)
+    }
+    setShipBusy('')
+  }
+
+  /** "Aa ke parcel le jao" — Delhivery ko bulao. */
+  const askPickup = async () => {
+    setPickupNote('')
+    try {
+      const result = await adminFetch('/api/delhivery/pickup', {
+        method: 'POST',
+        body: JSON.stringify(pickup),
+      })
+      setPickupNote('Pickup booked. ' + (result?.pickup_id ? 'ID: ' + result.pickup_id : ''))
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else setPickupNote('Failed: ' + err.message)
+    }
+  }
+
+
   const money = (n) => '₹' + Number(n || 0).toLocaleString('en-IN')
   const visible = filter === 'all' ? rows : rows.filter((row) => row.status === filter)
   const paidTotal = rows
@@ -1251,6 +1375,45 @@ function OrdersPanel({ onUnauthorized }) {
           {rows.length} order{rows.length === 1 ? '' : 's'} · {money(paidTotal)} paid.
           Change the status as the parcel moves — the customer sees it on their My orders page.
         </p>
+      </div>
+
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 16 }}>
+        <div>
+          <label className="admin-list-meta" htmlFor="pickup-date">Pickup date</label><br />
+          <input
+            id="pickup-date"
+            type="date"
+            value={pickup.date}
+            onChange={(e) => setPickup({ ...pickup, date: e.target.value })}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', font: 'inherit' }}
+          />
+        </div>
+        <div>
+          <label className="admin-list-meta" htmlFor="pickup-time">Time</label><br />
+          <input
+            id="pickup-time"
+            type="text"
+            value={pickup.time}
+            onChange={(e) => setPickup({ ...pickup, time: e.target.value })}
+            placeholder="14:00:00"
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', font: 'inherit', width: 100 }}
+          />
+        </div>
+        <div>
+          <label className="admin-list-meta" htmlFor="pickup-count">Parcels</label><br />
+          <input
+            id="pickup-count"
+            type="number"
+            min="1"
+            value={pickup.count}
+            onChange={(e) => setPickup({ ...pickup, count: e.target.value })}
+            style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', font: 'inherit', width: 80 }}
+          />
+        </div>
+        <button type="button" className="admin-secondary-btn" onClick={askPickup} disabled={!pickup.date}>
+          Book pickup
+        </button>
+        {pickupNote && <span className="admin-list-meta">{pickupNote}</span>}
       </div>
 
       <div className="admin-tabs" style={{ flexWrap: 'wrap' }}>
@@ -1304,6 +1467,77 @@ function OrdersPanel({ onUnauthorized }) {
                 {row.razorpayPaymentId && (
                   <div className="admin-list-meta" style={{ marginTop: 6 }}>
                     Payment ID: {row.razorpayPaymentId}
+                  </div>
+                )}
+                                <div className="admin-list-meta" style={{ marginTop: 6 }}>
+                  {row.delhiveryAwb
+                    ? `Waybill: ${row.delhiveryAwb}${row.delhiveryStatus ? ' · ' + row.delhiveryStatus : ''}`
+                    : 'No waybill yet'}
+                </div>
+
+                {row.delhiveryShipmentError && (
+                  <div style={{ marginTop: 6, color: '#a32020', fontSize: '0.85rem' }}>
+                    Shipping error: {row.delhiveryShipmentError}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  {!row.delhiveryAwb && (
+                    <button
+                      type="button"
+                      className="admin-secondary-btn"
+                      disabled={shipBusy === row._id}
+                      onClick={() => createShipment(row)}
+                    >
+                      {shipBusy === row._id ? 'Working…' : 'Create shipment'}
+                    </button>
+                  )}
+
+                  {row.delhiveryAwb && (
+                    <>
+                      <button
+                        type="button"
+                        className="admin-secondary-btn"
+                        disabled={shipBusy === row._id}
+                        onClick={() => trackOrder(row)}
+                      >
+                        {shipBusy === row._id ? 'Working…' : 'Track'}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-secondary-btn"
+                        disabled={shipBusy === row._id}
+                        onClick={() => openLabel(row)}
+                      >
+                        Label
+                      </button>
+                    </>
+                  )}
+                                    <button
+                    type="button"
+                    className="admin-danger-btn"
+                    disabled={shipBusy === row._id}
+                    onClick={() => removeOrder(row)}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                {tracking?.orderId === row.orderId && (
+                  <div style={{ marginTop: 10, padding: 10, background: 'rgba(0,0,0,0.04)', borderRadius: 8 }}>
+                    <strong>{tracking.status}</strong>
+                    {tracking.expectedDate && (
+                      <span className="admin-list-meta"> · expected {new Date(tracking.expectedDate).toLocaleDateString('en-IN')}</span>
+                    )}
+                    <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                      {tracking.scans.slice().reverse().slice(0, 8).map((scan, i) => (
+                        <li key={i} className="admin-list-meta">
+                          {scan.status} — {scan.location}
+                          {scan.at ? ' · ' + new Date(scan.at).toLocaleString('en-IN') : ''}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </div>

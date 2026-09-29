@@ -60,18 +60,42 @@ export function Proof({ showSeeAll, limit, uniformCards, customTitle, customIntr
   const [published, setPublished] = useState([])
   const [loaded, setLoaded] = useState(false)
 
+   /*
+    The wall draws from two shelves: reviews published here, and the clips
+    uploaded under Showcase Videos. A showcase clip is a testimonial too, so
+    it belongs on the wall — and it is read, never copied, so deleting it from
+    Showcase Videos takes it off the wall as well.
+  */
   useEffect(() => {
     let alive = true
-    api
-      .get('/api/reviews')
-      .then((rows) => {
-        if (alive && Array.isArray(rows)) setPublished(rows)
+
+    Promise.all([
+      api.get('/api/reviews').catch(() => []),
+      api.get('/api/showcase-videos').catch(() => []),
+    ])
+      .then(([reviewRows, videoRows]) => {
+        if (!alive) return
+
+        const reviews = Array.isArray(reviewRows) ? reviewRows : []
+        const showcase = (Array.isArray(videoRows) ? videoRows : [])
+          .filter((row) => row.videoUrl)
+          .map((row) => ({
+            _id: `showcase-${row._id}`,
+            name: row.name,
+            role: row.role,
+            video: row.videoUrl,
+            image: row.thumbnail,
+            createdAt: row.createdAt,
+          }))
+
+        setPublished([...reviews, ...showcase])
       })
       // A backend that is down costs the page its cards, never the section.
       .catch(() => {})
       .finally(() => {
         if (alive) setLoaded(true)
       })
+
     return () => {
       alive = false
     }

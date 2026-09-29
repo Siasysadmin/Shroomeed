@@ -54,6 +54,20 @@ export function VideoProof() {
     setCurrentIndex((prevIndex) => (prevIndex + 1) % clips.length)
   }
 
+    const goNext = () => {
+    if (clips.length < 2) return
+    setCurrentIndex((i) => (i + 1) % clips.length)
+    setIsPlaying(true)
+  }
+
+    const goPrev = () => {
+    if (clips.length < 2) return
+    setCurrentIndex((i) => (i - 1 + clips.length) % clips.length)
+    setIsPlaying(true)
+  }
+
+
+
   return (
     <section className={styles.section} id="reviews" aria-labelledby="reviews-title">
       <div className={styles.inner}>
@@ -170,6 +184,7 @@ export function VideoProof() {
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                           )}
                         </button>
+                        
                         <button type="button" className={styles.controlBtn} onClick={toggleMute} aria-label={isMuted ? 'Unmute video' : 'Mute video'}>
                           {isMuted ? (
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
@@ -177,8 +192,31 @@ export function VideoProof() {
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
                           )}
                         </button>
+
                       </div>
                     )}
+                    {isActive && clips.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          className={`${styles.navArrow} ${styles.navArrowPrev}`}
+                          onClick={goPrev}
+                          aria-label="Previous video"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+
+                        <button
+                          type="button"
+                          className={`${styles.navArrow} ${styles.navArrowNext}`}
+                          onClick={goNext}
+                          aria-label="Next video"
+                        >
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                      </>
+                    )}
+                   
                   </motion.div>
                 )
               })}

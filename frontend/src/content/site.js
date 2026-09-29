@@ -207,7 +207,7 @@ export const product = {
     { term: 'Free from', detail: 'Fillers, synthetic binders' },
   ],
   addToCart: 'Add to cart',
-  shipping: 'Free shipping nationwide · Cash on Delivery available',
+    shipping: 'Free shipping nationwide · Secure online payment',
 }
 
 export const cart = {
@@ -215,7 +215,7 @@ export const cart = {
   empty: 'Nothing here yet.',
   emptyBody: 'Daily Shield is a one-month pack of 60 capsules. Start the ritual whenever you are ready.',
   checkout: 'Checkout',
-  note: 'Taxes calculated at checkout. Cash on Delivery available across India.',
+   note: 'Secure payment via Razorpay — UPI, cards and netbanking.',
 }
 
 export const newsletter = {

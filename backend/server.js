@@ -11,6 +11,14 @@ import crypto from 'crypto'
 
 dotenv.config()
 
+const DELHIVERY_API_TOKEN = process.env.DELHIVERY_API_TOKEN
+const DELHIVERY_PICKUP_LOCATION =
+  process.env.DELHIVERY_PICKUP_LOCATION || 'SHROOMEED B2C'
+
+// const DELHIVERY_BASE_URL = 'https://track.delhivery.com'
+const DELHIVERY_BASE_URL =
+  process.env.DELHIVERY_BASE_URL || 'https://track.delhivery.com'
+
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -97,6 +105,204 @@ function discardUploaded(req) {
   removeUploads(...groups.map((file) => `/uploads/${file.filename}`))
 }
 
+/** Delhivery ko GET request — token lagata hai aur jawab ko JSON mein badalta hai. */
+async function delhiveryGet(path) {
+  if (!DELHIVERY_API_TOKEN) throw new Error('DELHIVERY_API_TOKEN is missing')
+
+  const response = await fetch(`${DELHIVERY_BASE_URL}${path}`, {
+    headers: {
+      Authorization: `Token ${DELHIVERY_API_TOKEN}`,
+      Accept: 'application/json',
+    },
+  })
+
+  const text = await response.text()
+  let data = null
+  try { data = JSON.parse(text) } catch { /* kabhi HTML bhi aata hai */ }
+
+  if (!response.ok) {
+    throw new Error(data?.rmk || data?.error || `Delhivery request failed (${response.status})`)
+  }
+  return data ?? text
+}
+
+/** Ek waybill ka abhi ka haal — status aur poora safar. */
+async function trackDelhiveryShipment(awb) {
+  const data = await delhiveryGet(
+    `/api/v1/packages/json/?waybill=${encodeURIComponent(awb)}`
+  )
+
+  const shipment = data?.ShipmentData?.[0]?.Shipment || null
+  if (!shipment) throw new Error('Delhivery has no record of this waybill yet.')
+
+  return {
+    status: shipment?.Status?.Status || 'Unknown',
+    note: shipment?.Status?.Instructions || '',
+    location: shipment?.Status?.StatusLocation || '',
+    updatedAt: shipment?.Status?.StatusDateTime || null,
+    expectedDate: shipment?.ExpectedDeliveryDate || null,
+    scans: (shipment?.Scans || []).map((scan) => ({
+      status: scan?.ScanDetail?.Scan || '',
+      note: scan?.ScanDetail?.Instructions || '',
+      location: scan?.ScanDetail?.ScannedLocation || '',
+      at: scan?.ScanDetail?.StatusDateTime || null,
+    })),
+  }
+}
+
+/**
+ * Delhivery ka status dukaan ke status se alag hai — usme "Manifested",
+ * "Dispatched" jaise shabd hain. Sirf woh padav uthate hain jo grahak ke
+ * liye maayne rakhte hain; baaki delhiveryStatus mein jaise ka taisa rehta hai.
+ */
+function shopStatusFor(delhiveryStatus) {
+  const value = String(delhiveryStatus || '').toLowerCase()
+  if (value.includes('delivered')) return 'Delivered'
+  if (value.includes('rto') || value.includes('cancel') || value.includes('lost')) return 'Cancelled'
+  if (value.includes('dispatched') || value.includes('transit') || value.includes('pending')) return 'In Transit'
+  if (value.includes('manifest') || value.includes('not picked')) return 'Confirmed'
+  return null
+}
+
+/** Packing slip — jo parcel par chipkana hai. */
+async function delhiveryPackingSlip(awb) {
+  return delhiveryGet(
+    `/api/p/packing_slip?wbns=${encodeURIComponent(awb)}&pdf=true`
+  )
+}
+
+/** "Aa ke parcel le jao" — Delhivery ko bulana. */
+async function requestDelhiveryPickup({ date, time, count }) {
+  if (!DELHIVERY_API_TOKEN) throw new Error('DELHIVERY_API_TOKEN is missing')
+
+  const response = await fetch(`${DELHIVERY_BASE_URL}/fm/request/new/`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Token ${DELHIVERY_API_TOKEN}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      pickup_location: DELHIVERY_PICKUP_LOCATION,
+      pickup_date: date,
+      pickup_time: time,
+      expected_package_count: Number(count) || 1,
+    }),
+  })
+
+  const result = await response.json().catch(() => null)
+  if (!response.ok || result?.error) {
+    throw new Error(
+      result?.error || result?.pry_message || `Pickup request failed (${response.status})`
+    )
+  }
+  return result
+}
+
+
+async function createDelhiveryShipment(order) {
+  if (!DELHIVERY_API_TOKEN) {
+    throw new Error('DELHIVERY_API_TOKEN is missing')
+  }
+  // Delhivery in characters ko reject karta hai: & # % ; \
+  const clean = (value) =>
+    String(value ?? '').replace(/[&#%;\\]/g, ' ').replace(/\s+/g, ' ').trim()
+
+  const shipment = {
+    name: order.customerName,
+    add: order.deliveryAddress,
+    pin: order.deliveryPincode,
+    city: order.deliveryCity,
+    state: order.deliveryState,
+    country: 'India',
+
+    phone: order.customerPhone,
+
+    order: order.orderId,
+
+    payment_mode: 'Prepaid',
+
+    total_amount: order.totalAmount,
+
+       products_desc: clean(
+      order.items.map(item => `${item.title} x ${item.quantity}`).join(', ')
+    ),
+
+    quantity: order.items.reduce(
+      (total, item) => total + Number(item.quantity || 0),
+      0
+    ),
+
+    weight: Number(process.env.DELHIVERY_DEFAULT_WEIGHT_G || 500),
+
+    shipment_width: Number(
+      process.env.DELHIVERY_DEFAULT_WIDTH_CM || 10
+    ),
+
+    shipment_height: Number(
+      process.env.DELHIVERY_DEFAULT_HEIGHT_CM || 8
+    ),
+
+    shipment_length: Number(
+      process.env.DELHIVERY_DEFAULT_LENGTH_CM || 15
+    ),
+
+    shipping_mode: 'Surface'
+  }
+
+  const payload = {
+    shipments: [shipment],
+     pickup_location: {
+      name: DELHIVERY_PICKUP_LOCATION,
+      add: process.env.DELHIVERY_PICKUP_ADDRESS || '',
+      city: process.env.DELHIVERY_PICKUP_CITY || '',
+      pin_code: Number(process.env.DELHIVERY_PICKUP_PIN) || undefined,
+      country: 'India',
+      phone: process.env.DELHIVERY_PICKUP_PHONE || '',
+    }
+  }
+
+  const body = new URLSearchParams()
+  body.append('format', 'json')
+  body.append('data', JSON.stringify(payload))
+
+  const response = await fetch(
+    `${DELHIVERY_BASE_URL}/api/cmu/create.json`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Token ${DELHIVERY_API_TOKEN}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
+    }
+  )
+
+  const result = await response.json()
+
+  const pkg = result?.packages?.[0] || null
+
+  if (
+    !response.ok ||
+    result?.success === false ||
+    pkg?.status === 'Fail' ||
+    !pkg?.waybill
+  ) {
+    console.error('Delhivery API Error:', result)
+    throw new Error(
+      pkg?.remarks?.join(' ') ||
+      result?.rmk ||
+      result?.error ||
+      'Delhivery shipment creation failed'
+    )
+  }
+
+  console.log('Delhivery shipment response:', result)
+
+  return result
+}
+
+
 // --- SCHEMAS ---
 /**
  * One card on the review wall.
@@ -132,6 +338,7 @@ const ShowcaseVideoSchema = new mongoose.Schema({
   role: { type: String },
   videoUrl: { type: String, required: true },
   thumbnail: { type: String },
+    pinned: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 })
 const ShowcaseVideo = mongoose.model('ShowcaseVideo', ShowcaseVideoSchema)
@@ -186,12 +393,21 @@ const OrderSchema = new mongoose.Schema({
     price: Number
   }],
   totalAmount: { type: Number, required: true },
-  status: { type: String, default: 'Confirmed' }, // Confirmed, Shipped, In Transit, Delivered
-    paymentStatus: { type: String, default: 'Pending' },
+  status: { type: String, default: 'Confirmed' },
+  paymentStatus: { type: String, default: 'Pending' },
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
-    viewToken: { type: String, index: true },
+  viewToken: { type: String, index: true },
   deliveryAddress: { type: String },
+    deliveryCity: { type: String },
+  deliveryState: { type: String },
+  deliveryPincode: { type: String },
+
+  delhiveryAwb: { type: String },
+  delhiveryStatus: { type: String },
+  delhiveryShipmentCreated: { type: Boolean, default: false },
+  delhiveryShipmentError: { type: String },
+  delhiveryLastUpdated: { type: Date },
   createdAt: { type: Date, default: Date.now }
 })
 const Order = mongoose.model('Order', OrderSchema)
@@ -327,7 +543,7 @@ app.delete('/api/reviews/:id', async (req, res) => {
 // Showcase Videos API
 app.get('/api/showcase-videos', async (req, res) => {
   try {
-    const videos = await ShowcaseVideo.find().sort({ createdAt: -1 })
+      const videos = await ShowcaseVideo.find().sort({ pinned: -1, createdAt: -1 })
     res.json(videos)
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -375,6 +591,55 @@ app.post(
     }
   }
 )
+
+// Admin: video ko pin / unpin karna
+app.patch('/api/showcase-videos/:id/pin', requireAdmin, async (req, res) => {
+  try {
+    const pinned = Boolean(req.body?.pinned)
+    const video = await ShowcaseVideo.findByIdAndUpdate(req.params.id, { pinned }, { new: true })
+    if (!video) return res.status(404).json({ error: 'Video not found' })
+
+    const videos = await ShowcaseVideo.find().sort({ pinned: -1, createdAt: -1 })
+    res.json(videos)
+  } catch (err) {
+    res.status(500).json({ error: 'Could not update the video.' })
+  }
+})
+
+//temporary test route
+// app.get('/api/test-delhivery', async (req, res) => {
+//   try {
+//    const testOrder = {
+//   orderId: `SHROOMTEST-${Date.now()}`,
+
+//   customerName: 'Rahul Sharma',
+//   customerPhone: '8358056306',
+//    deliveryAddress: '54 Scheme No 54, Vijay Nagar',
+//   deliveryCity: 'Gurgaon',
+//   deliveryState: 'Haryana',
+//   deliveryPincode: '122003',
+
+//   items: [
+//     {
+//       title: 'ShroMEED Daily Shield',
+//       quantity: 1,
+//       price: 999
+//     }
+//   ],
+
+//   totalAmount: 999
+// }
+
+//     const result = await createDelhiveryShipment(testOrder)
+
+//     res.json(result)
+//   } catch (error) {
+//     res.status(500).json({
+//       error: error.message
+//     })
+//   }
+// })
+
 
 app.delete('/api/showcase-videos/:id', async (req, res) => {
   try {
@@ -470,6 +735,17 @@ app.patch('/api/orders/:id/status', requireAdmin, async (req, res) => {
   }
 })
 
+// Admin: order delete
+app.delete('/api/orders/:id', requireAdmin, async (req, res) => {
+  try {
+    const order = await Order.findByIdAndDelete(req.params.id)
+    if (!order) return res.status(404).json({ error: 'Order not found.' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Could not delete the order.' })
+  }
+})
+
 // Customer: sirf apne orders (token se)
 app.post('/api/orders/mine', async (req, res) => {
   try {
@@ -485,6 +761,141 @@ app.post('/api/orders/mine', async (req, res) => {
     res.json(orders)
   } catch (err) {
     res.status(500).json({ error: 'Could not load your orders.' })
+  }
+})
+
+
+// --- DELHIVERY ROUTES ---
+
+/** Shipment banao aur order par nishan laga do. */
+async function shipOrder(order) {
+  const result = await createDelhiveryShipment(order)
+  const pkg = result?.packages?.[0] || null
+
+  order.delhiveryAwb = pkg?.waybill || ''
+  order.delhiveryStatus = pkg?.status || 'Manifested'
+  order.delhiveryShipmentCreated = true
+  order.delhiveryShipmentError = ''
+  order.delhiveryLastUpdated = new Date()
+  await order.save()
+
+  return order
+}
+
+/**
+ * Jin orders ka shipment nahi ban paya (wallet khali tha, ya Delhivery down
+ * thi) unhe dobara bhejne ka raasta. Iske bina wo order hamesha ke liye
+ * atke rehte.
+ */
+app.post('/api/orders/:id/ship', requireAdmin, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+    if (!order) return res.status(404).json({ error: 'Order not found.' })
+    if (order.delhiveryAwb) {
+      return res.status(400).json({ error: 'This order already has a waybill.' })
+    }
+
+    await shipOrder(order)
+    res.json(order)
+  } catch (err) {
+    // Wajah order par likh do taaki admin ko dikhe
+    try {
+      const order = await Order.findById(req.params.id)
+      if (order) {
+        order.delhiveryShipmentCreated = false
+        order.delhiveryShipmentError = err.message
+        order.delhiveryLastUpdated = new Date()
+        await order.save()
+      }
+    } catch { /* ignore */ }
+
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// Admin: Delhivery se taaza status laao
+app.post('/api/orders/:id/track', requireAdmin, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+    if (!order) return res.status(404).json({ error: 'Order not found.' })
+    if (!order.delhiveryAwb) {
+      return res.status(400).json({ error: 'No waybill on this order yet.' })
+    }
+
+    const tracking = await trackDelhiveryShipment(order.delhiveryAwb)
+
+    order.delhiveryStatus = tracking.status
+    order.delhiveryLastUpdated = new Date()
+
+    const shopStatus = shopStatusFor(tracking.status)
+    if (shopStatus) order.status = shopStatus
+
+    await order.save()
+    res.json({ order, tracking })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// Admin: packing slip (parcel par chipkane wala label)
+app.get('/api/orders/:id/label', requireAdmin, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+    if (!order) return res.status(404).json({ error: 'Order not found.' })
+    if (!order.delhiveryAwb) {
+      return res.status(400).json({ error: 'No waybill on this order yet.' })
+    }
+
+    const slip = await delhiveryPackingSlip(order.delhiveryAwb)
+    res.json(slip)
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+// Admin: "aa ke parcel le jao"
+app.post('/api/delhivery/pickup', requireAdmin, async (req, res) => {
+  try {
+    const { date, time, count } = req.body || {}
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) {
+      return res.status(400).json({ error: 'Date must be YYYY-MM-DD.' })
+    }
+
+    const result = await requestDelhiveryPickup({
+      date,
+      time: time || '14:00:00',
+      count: count || 1,
+    })
+    res.json(result)
+  } catch (err) {
+    res.status(502).json({ error: err.message })
+  }
+})
+
+/**
+ * Grahak apna tracking dekhe — sirf apne viewToken se, isliye koi doosra
+ * kisi aur ka parcel nahi dekh sakta.
+ */
+app.post('/api/orders/track-mine', async (req, res) => {
+  try {
+    const token = String(req.body?.token || '')
+    if (token.length !== 48) return res.status(400).json({ error: 'Invalid request.' })
+
+    const order = await Order.findOne({ viewToken: token })
+    if (!order) return res.status(404).json({ error: 'Order not found.' })
+    if (!order.delhiveryAwb) {
+      return res.json({ awb: '', status: order.status, scans: [] })
+    }
+
+    const tracking = await trackDelhiveryShipment(order.delhiveryAwb)
+    res.json({
+      awb: order.delhiveryAwb,
+      status: tracking.status,
+      expectedDate: tracking.expectedDate,
+      scans: tracking.scans,
+    })
+  } catch (err) {
+    res.status(502).json({ error: err.message })
   }
 })
 
@@ -556,6 +967,9 @@ app.post('/api/payment/verify', async (req, res) => {
       customerEmail: customer?.email || '',
       customerPhone: customer?.phone || '',
       deliveryAddress: customer?.address || '',
+      deliveryCity: customer?.city || '',
+deliveryState: customer?.state || '',
+deliveryPincode: customer?.pincode || '',
       items: [{ title: 'Daily Shield', quantity: qty, price: unit }],
       totalAmount: total,
       status: 'Confirmed',
@@ -564,6 +978,46 @@ app.post('/api/payment/verify', async (req, res) => {
       razorpayPaymentId: razorpay_payment_id,
       viewToken: crypto.randomBytes(24).toString('hex'),
     })
+
+    try {
+  const delhiveryResult = await createDelhiveryShipment(order)
+
+  console.log('DELHIVERY RESULT:', JSON.stringify(delhiveryResult, null, 2))
+
+  const packageData =
+    delhiveryResult?.packages?.[0] ||
+    delhiveryResult?.package?.[0] ||
+    null
+
+  const awb =
+    packageData?.waybill ||
+    packageData?.awb ||
+    delhiveryResult?.waybill ||
+    ''
+
+  order.delhiveryAwb = awb
+  order.delhiveryStatus = packageData?.status || 'Manifested'
+  order.delhiveryShipmentCreated = true
+  order.delhiveryShipmentError = ''
+  order.delhiveryLastUpdated = new Date()
+
+  await order.save()
+
+  console.log('Delhivery AWB saved:', awb)
+
+} catch (delhiveryError) {
+  console.error(
+    'Delhivery shipment creation failed:',
+    delhiveryError
+  )
+
+  order.delhiveryShipmentCreated = false
+  order.delhiveryShipmentError =
+    delhiveryError?.message || 'Shipment creation failed'
+
+  await order.save()
+}
+
 
        res.status(201).json({ ok: true, orderId: order.orderId, viewToken: order.viewToken })
   } catch (err) {

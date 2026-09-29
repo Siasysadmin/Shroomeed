@@ -21,7 +21,15 @@ function loadRazorpay() {
   })
 }
 
-const EMPTY_FORM = { name: '', email: '', phone: '', address: '' }
+const EMPTY_FORM = {
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+}
 
 export default function Cart() {
   const reduced = useReducedMotion()
@@ -46,7 +54,14 @@ export default function Cart() {
       return 'Please enter a 10-digit phone number.'
     }
     if (form.address.trim().length < 12) return 'Please enter your full delivery address.'
+    if (!form.city.trim()) return 'Please enter your city.'
+if (!form.state.trim()) return 'Please enter your state.'
+
+if (!/^[1-9][0-9]{5}$/.test(form.pincode.trim())) {
+  return 'Please enter a valid 6-digit PIN code.'
+}
     return ''
+    
   }
 
   async function handleCheckout() {
@@ -99,12 +114,15 @@ export default function Cart() {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
-                customer: {
-                  name: form.name.trim(),
-                  email: form.email.trim(),
-                  phone: form.phone.replace(/\D/g, '').slice(-10),
-                  address: form.address.trim(),
-                },
+               customer: {
+  name: form.name.trim(),
+  email: form.email.trim(),
+  phone: form.phone.replace(/\D/g, '').slice(-10),
+  address: form.address.trim(),
+  city: form.city.trim(),
+  state: form.state.trim(),
+  pincode: form.pincode.trim(),
+},
               }),
             })
             const verified = await verifyRes.json()
@@ -156,7 +174,7 @@ export default function Cart() {
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Your order is confirmed.</p>
           <p className={styles.emptyBody}>
-            Order {placedOrderId}. A confirmation is on its way to your email.
+           Order {placedOrderId}. Please save this order number for your reference.
           </p>
           <Link className={styles.emptyAction} to="/account">
             View my orders
@@ -279,7 +297,7 @@ export default function Cart() {
                       autoComplete="name"
                       value={form.name}
                       onChange={setField('name')}
-                      placeholder="Aayan Garg"
+                      placeholder="Enter Your Name"
                     />
                   </div>
 
@@ -292,7 +310,7 @@ export default function Cart() {
                       autoComplete="tel"
                       value={form.phone}
                       onChange={setField('phone')}
-                      placeholder="9876543210"
+                      placeholder="Enter Your Phone Number"
                     />
                   </div>
 
@@ -304,7 +322,7 @@ export default function Cart() {
                       autoComplete="email"
                       value={form.email}
                       onChange={setField('email')}
-                      placeholder="you@example.com"
+                      placeholder="Enter Your Email"
                     />
                   </div>
 
@@ -318,6 +336,43 @@ export default function Cart() {
                       onChange={setField('address')}
                       placeholder="House / flat, street, area, city, state, PIN code"
                     />
+                    <div className={styles.field}>
+  <label htmlFor="co-city">City</label>
+  <input
+    id="co-city"
+    type="text"
+    autoComplete="address-level2"
+    value={form.city}
+    onChange={setField('city')}
+    placeholder="Enter Your City"
+  />
+</div>
+
+<div className={styles.field}>
+  <label htmlFor="co-state">State</label>
+  <input
+    id="co-state"
+    type="text"
+    autoComplete="address-level1"
+    value={form.state}
+    onChange={setField('state')}
+    placeholder="Enter Your State"
+  />
+</div>
+
+<div className={styles.field}>
+  <label htmlFor="co-pincode">PIN code</label>
+  <input
+    id="co-pincode"
+    type="text"
+    inputMode="numeric"
+    maxLength="6"
+    autoComplete="postal-code"
+    value={form.pincode}
+    onChange={setField('pincode')}
+    placeholder="Enter 6-digit PIN"
+  />
+</div>
                   </div>
                 </div>
               </div>
@@ -370,7 +425,7 @@ export default function Cart() {
       <Reveal as="ul" className={styles.badges} delay={0.1}>
         <li>ISO &amp; GMP certified</li>
         <li>Third party tested</li>
-        <li>Cash on Delivery</li>
+                <li>Secure payment via Razorpay</li>
       </Reveal>
     </section>
   )

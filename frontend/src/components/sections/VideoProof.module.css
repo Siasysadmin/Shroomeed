@@ -248,3 +248,71 @@
   text-align: center;
   text-wrap: pretty;
 }
+
+
+
+/* --- deck arrows ---------------------------------------------------
+   Aaram ke waqt sirf ek halka sa nishan — koi button nahi, taaki
+   video par kuch tairta hua na lage. Card par hover karo to halke se
+   ubhar aate hain; arrow par hover karo tabhi poora button bante hain.
+   Touch par hover hota hi nahi, isliye waha halke se dikhte rehte hain. */
+
+.navArrow {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-50%) scale(1);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease,
+    background-color 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.navArrowPrev { left: 10px; }
+.navArrowNext { right: 10px; }
+
+/* Card par hover — halka sa ubhrein */
+.videoInner:hover .navArrow { opacity: 0.55; }
+
+/* Arrow par hover — ab poora button */
+.navArrow:hover,
+.navArrow:focus-visible {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transform: translateY(-50%) scale(1.08);
+  filter: none;
+  outline: none;
+}
+
+/* Touch — hover nahi hota, isliye hamesha halke se dikhein */
+@media (hover: none) {
+  .navArrow { opacity: 0.5; }
+
+  .navArrow:active {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transform: translateY(-50%) scale(0.96);
+    filter: none;
+  }
+}
+
+/* naam ko buttons ke neeche jaane se roko */
+.videoName { right: 112px; }
