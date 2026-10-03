@@ -756,7 +756,7 @@ app.post('/api/orders/mine', async (req, res) => {
 
     const orders = await Order.find({ viewToken: { $in: tokens } })
       .sort({ createdAt: -1 })
-      .select('orderId customerName items totalAmount status paymentStatus createdAt -_id')
+           .select('orderId customerName items totalAmount status paymentStatus createdAt viewToken delhiveryAwb -_id')
 
     res.json(orders)
   } catch (err) {

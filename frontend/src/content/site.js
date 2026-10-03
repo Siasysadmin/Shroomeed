@@ -239,19 +239,30 @@ export const footer = {
     {
       title: 'Legal',
       links: [
+                { label: 'About Us', to: '/policies/about' },
         { label: 'Privacy Policy', to: '/policies/privacy' },
         { label: 'Terms & Conditions', to: '/policies/terms' },
-        { label: 'Shipping Policy', to: '/policies/shipping' },
-        { label: 'Refunds', to: '/policies/refunds' },
+        { label: 'Shipping & Return Policy', to: '/policies/shipping' },
+        { label: 'Refunds Policy', to: '/policies/refunds' },
       ],
     },
   ],
   badges: ['ISO Certified', 'GMP Certified', 'FSSAI Approved', 'Zero heavy metals', 'Third party tested'],
   /* Entity name and premises exactly as they read on the FSSAI registration
      certificate (Reg. No. 21426590000646, Shivpuri, Madhya Pradesh). */
-  legal: 'ShrooMEED™ Nutraceutical 2026. FSSAI Lic. No. 21426590000646. The Daily Performance Ritual.',
-  address:
-    'House No. 395, Thandi Sadak, Hanuman Gali, Near Shivam Namkeen, Shivpuri, Madhya Pradesh – 473551, India',
+  address: `Got questions? Reach Out To Us:
++91-7827223590
+support@shroomeed.com
+
+Contact Information
+Shroomeed Nutraceutical
+House no. 395, Thandi Sadak, Hanuman Gali
+Near Shivam namkeen, Shivpuri Airport
+Shivpuri, Madhya Pradesh - 473551
+
+FSSAI Lic. No. 21426590000646
+
+Operational Hours: 10AM–7PM, Monday–Saturday`,
 }
 
 export const researchData = {

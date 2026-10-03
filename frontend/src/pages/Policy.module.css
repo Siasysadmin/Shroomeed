@@ -36,6 +36,7 @@
   font-size: var(--fs-body);
   line-height: 1.6;
   color: var(--ink-80);
+    white-space: pre-line;
 }
 
 @media (max-width: 860px) {

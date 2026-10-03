@@ -1360,6 +1360,58 @@ function OrdersPanel({ onUnauthorized }) {
     }
   }
 
+    const [exportMonth, setExportMonth] = useState('')
+
+  /**
+   * Excel CSV hi padhta hai, isliye koi library nahi — bas text.
+   * Shuru ka \ufeff Excel ko batata hai ki file UTF-8 hai, warna ₹ aur
+   * Hindi ke akshar tut jaate hain.
+   */
+  const exportCsv = () => {
+    const forMonth = exportMonth
+      ? rows.filter((row) => String(row.createdAt || '').slice(0, 7) === exportMonth)
+      : rows
+
+    if (forMonth.length === 0) {
+      window.alert('No orders in that month.')
+      return
+    }
+
+    const headers = [
+      'Order ID', 'Date', 'Customer', 'Phone', 'Email', 'Address',
+      'Items', 'Amount', 'Payment', 'Payment ID',
+      'Order status', 'Waybill', 'Courier status',
+    ]
+
+    const cell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`
+
+    const lines = forMonth.map((row) => [
+      row.orderId,
+      new Date(row.createdAt).toLocaleString('en-IN'),
+      row.customerName,
+      row.customerPhone,
+      row.customerEmail,
+      row.deliveryAddress,
+      (row.items || []).map((item) => `${item.title} x ${item.quantity}`).join('; '),
+      row.totalAmount,
+      row.paymentStatus,
+      row.razorpayPaymentId,
+      row.status,
+      row.delhiveryAwb,
+      row.delhiveryStatus,
+    ].map(cell).join(','))
+
+    const csv = '\ufeff' + [headers.map(cell).join(','), ...lines].join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `shroomeed-orders-${exportMonth || 'all'}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
 
   const money = (n) => '₹' + Number(n || 0).toLocaleString('en-IN')
   const visible = filter === 'all' ? rows : rows.filter((row) => row.status === filter)
@@ -1429,6 +1481,17 @@ function OrdersPanel({ onUnauthorized }) {
         ))}
         <button className="admin-tab-btn" onClick={load} disabled={loading} style={{ marginLeft: 'auto' }}>
           {loading ? 'Loading…' : 'Refresh'}
+        </button>
+
+                <input
+          type="month"
+          value={exportMonth}
+          onChange={(e) => setExportMonth(e.target.value)}
+          title="Pick a month, or leave blank for all orders"
+          style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #ddd', font: 'inherit' }}
+        />
+        <button className="admin-tab-btn" onClick={exportCsv}>
+          Export to Excel
         </button>
       </div>
 

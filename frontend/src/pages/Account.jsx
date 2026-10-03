@@ -67,6 +67,40 @@ export default function Account() {
       .finally(() => setLoading(false))
   }, [])
 
+    const [trackFor, setTrackFor] = useState(null)
+  const [trackData, setTrackData] = useState(null)
+  const [trackBusy, setTrackBusy] = useState(false)
+  const [trackError, setTrackError] = useState('')
+
+  /** Courier se seedha taaza haal — apne hi order ka, apne hi token se. */
+  const trackOrder = async (order) => {
+    if (trackFor === order.orderId) {
+      setTrackFor(null)
+      return
+    }
+
+    setTrackFor(order.orderId)
+    setTrackData(null)
+    setTrackError('')
+    setTrackBusy(true)
+
+    try {
+      const res = await fetch(`${API_URL}/api/orders/track-mine`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: order.viewToken }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Could not fetch tracking.')
+      setTrackData(data)
+    } catch (err) {
+      setTrackError(err.message)
+    } finally {
+      setTrackBusy(false)
+    }
+  }
+
+
   const displayName = orders[0]?.customerName || 'My account'
   const initial = displayName.trim().charAt(0).toUpperCase() || 'S'
 
@@ -201,6 +235,55 @@ export default function Account() {
                                       </div>
                                     ))}
                                   </div>
+                                                                    {order.delhiveryAwb && (
+                                    <div style={{ padding: '0 0 16px' }}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); trackOrder(order) }}
+                                        style={{
+                                          padding: '8px 14px',
+                                          borderRadius: 999,
+                                          border: '1px solid rgba(0,0,0,0.18)',
+                                          background: 'transparent',
+                                          font: 'inherit',
+                                          fontSize: '0.85rem',
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        {trackFor === order.orderId ? 'Hide tracking' : 'Track shipment'}
+                                      </button>
+
+                                      {trackFor === order.orderId && (
+                                        <div style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: 1.6 }}>
+                                          {trackBusy && <p>Checking with the courier…</p>}
+                                          {trackError && <p role="alert">{trackError}</p>}
+
+                                          {trackData && (
+                                            <>
+                                              <p>
+                                                <strong>{trackData.status}</strong>
+                                                {trackData.expectedDate && (
+                                                  <> · expected {new Date(trackData.expectedDate).toLocaleDateString('en-IN')}</>
+                                                )}
+                                              </p>
+                                              <p style={{ opacity: 0.6 }}>Tracking number: {trackData.awb}</p>
+
+                                              {(trackData.scans || []).length > 0 && (
+                                                <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+                                                  {trackData.scans.slice().reverse().slice(0, 8).map((scan, i) => (
+                                                    <li key={i} style={{ opacity: 0.75 }}>
+                                                      {scan.status} — {scan.location}
+                                                      {scan.at ? ` · ${new Date(scan.at).toLocaleString('en-IN')}` : ''}
+                                                    </li>
+                                                  ))}
+                                                </ul>
+                                              )}
+                                            </>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </motion.div>
                               )}
                             </AnimatePresence>
