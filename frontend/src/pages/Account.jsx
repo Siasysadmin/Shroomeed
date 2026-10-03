@@ -253,34 +253,8 @@ export default function Account() {
                                         {trackFor === order.orderId ? 'Hide tracking' : 'Track shipment'}
                                       </button>
 
-                                      {trackFor === order.orderId && (
-                                        <div style={{ marginTop: 12, fontSize: '0.85rem', lineHeight: 1.6 }}>
-                                          {trackBusy && <p>Checking with the courier…</p>}
-                                          {trackError && <p role="alert">{trackError}</p>}
-
-                                          {trackData && (
-                                            <>
-                                              <p>
-                                                <strong>{trackData.status}</strong>
-                                                {trackData.expectedDate && (
-                                                  <> · expected {new Date(trackData.expectedDate).toLocaleDateString('en-IN')}</>
-                                                )}
-                                              </p>
-                                              <p style={{ opacity: 0.6 }}>Tracking number: {trackData.awb}</p>
-
-                                              {(trackData.scans || []).length > 0 && (
-                                                <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
-                                                  {trackData.scans.slice().reverse().slice(0, 8).map((scan, i) => (
-                                                    <li key={i} style={{ opacity: 0.75 }}>
-                                                      {scan.status} — {scan.location}
-                                                      {scan.at ? ` · ${new Date(scan.at).toLocaleString('en-IN')}` : ''}
-                                                    </li>
-                                                  ))}
-                                                </ul>
-                                              )}
-                                            </>
-                                          )}
-                                        </div>
+                                                                         {trackFor === order.orderId && (
+                                        <Tracking data={trackData} busy={trackBusy} error={trackError} />
                                       )}
                                     </div>
                                   )}
@@ -299,6 +273,107 @@ export default function Account() {
 
         </div>
       </div>
+    </div>
+  )
+}
+
+/* ----------------------------------------------------------- tracking */
+
+const TRACK_STEPS = ['Packed', 'On the way', 'Out for delivery', 'Delivered']
+
+/** Courier ke shabd grahak ki bhasha mein. */
+function plainStatus(raw) {
+  const value = String(raw || '').toLowerCase()
+  if (value.includes('delivered')) return { label: 'Delivered', step: 3 }
+  if (value.includes('rto') || value.includes('return')) return { label: 'Coming back to us', step: -1 }
+  if (value.includes('cancel') || value.includes('lost')) return { label: 'Cancelled', step: -1 }
+  if (value.includes('dispatched') || value.includes('out for delivery')) return { label: 'Out for delivery', step: 2 }
+  if (value.includes('transit') || value.includes('pending')) return { label: 'On the way', step: 1 }
+  if (value.includes('manifest') || value.includes('not picked')) return { label: 'Packed', step: 0 }
+  return { label: raw || 'Updating', step: 0 }
+}
+
+/** "Bhopal_BharatNagar_D (Madhya Pradesh)" ka matlab grahak ke liye bas "Bhopal" hai. */
+function placeName(raw) {
+  return String(raw || '').split('(')[0].split('_')[0].trim()
+}
+
+function when(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  return (
+    date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) +
+    ', ' +
+    date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
+  )
+}
+
+/**
+ * Courier har hub par kai baar scan karta hai, to "On the way" lagatar
+ * dohrata hai. Ek padav ek hi baar dikhao — list safar jaisi lage, log
+ * jaisi nahi.
+ */
+function tidyScans(scans) {
+  const out = []
+  for (const scan of scans || []) {
+    const label = plainStatus(scan.status).label
+    const location = placeName(scan.location)
+    const last = out[out.length - 1]
+    if (last && last.label === label && last.location === location) continue
+    out.push({ label, location, at: scan.at })
+  }
+  return out
+}
+
+function Tracking({ data, busy, error }) {
+  if (busy) return <p className={styles.trackNote}>Checking with the courier…</p>
+  if (error) return <p className={styles.trackNote} role="alert">{error}</p>
+  if (!data) return null
+
+  const now = plainStatus(data.status)
+  const steps = tidyScans(data.scans).reverse()
+  const delivered = now.step === 3
+
+  return (
+    <div className={styles.track}>
+      <div className={styles.trackHead}>
+        <span className={styles.trackStatus}>{now.label}</span>
+        {!delivered && data.expectedDate && (
+          <span className={styles.trackMeta}>
+            Expected by{' '}
+            {new Date(data.expectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+          </span>
+        )}
+      </div>
+
+      {now.step >= 0 && (
+        <ol className={styles.trackBar}>
+          {TRACK_STEPS.map((label, i) => (
+            <li
+              key={label}
+              className={`${styles.trackStep} ${i <= now.step ? styles.trackStepDone : ''}`}
+            >
+              <span className={styles.trackDot} />
+              <span className={styles.trackStepLabel}>{label}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      {steps.length > 0 && (
+        <ul className={styles.trackList}>
+          {steps.map((scan, i) => (
+            <li key={i} className={styles.trackItem}>
+              <span className={styles.trackItemLabel}>{scan.label}</span>
+              <span className={styles.trackItemMeta}>
+                {[scan.location, when(scan.at)].filter(Boolean).join(' · ')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className={styles.trackAwb}>Tracking number {data.awb}</p>
     </div>
   )
 }

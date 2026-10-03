@@ -282,3 +282,145 @@
 
   .orderTable { font-size: 0.9rem; }
 }
+
+/* --- shipment tracking ---------------------------------------------- */
+
+.trackNote {
+  margin: 12px 0 0;
+  font-size: 0.86rem;
+  opacity: 0.7;
+}
+
+.track {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.035);
+}
+
+.trackHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.trackStatus {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.trackMeta {
+  font-size: 0.82rem;
+  opacity: 0.55;
+}
+
+/* Chaar padav, beech mein lakeer — jahan tak pahuncha hai wahan tak bhari */
+.trackBar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 18px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.trackStep {
+  position: relative;
+  padding-top: 20px;
+  text-align: center;
+}
+
+.trackStep::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.trackStep:first-child::before { left: 50%; width: 50%; }
+.trackStep:last-child::before { width: 50%; }
+
+.trackStepDone::before { background: #D4AF37; }
+
+.trackDot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid rgba(0, 0, 0, 0.18);
+}
+
+.trackStepDone .trackDot {
+  background: #D4AF37;
+  border-color: #D4AF37;
+}
+
+.trackStepLabel {
+  display: block;
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  opacity: 0.5;
+}
+
+.trackStepDone .trackStepLabel { opacity: 0.85; }
+
+/* Safar ki list — baayein ek lakeer, har padav par ek bindu */
+.trackList {
+  margin: 18px 0 0;
+  padding: 0 0 0 18px;
+  list-style: none;
+  border-left: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.trackItem {
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.trackItem:last-child { padding-bottom: 0; }
+
+.trackItem::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -23px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.trackItem:first-child::before { background: #D4AF37; }
+
+.trackItemLabel {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.trackItemMeta {
+  display: block;
+  font-size: 0.78rem;
+  opacity: 0.55;
+}
+
+.trackAwb {
+  margin: 16px 0 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  opacity: 0.45;
+}
+
+@media (max-width: 520px) {
+  .trackStepLabel { font-size: 0.66rem; }
+  .track { padding: 14px; }
+}
