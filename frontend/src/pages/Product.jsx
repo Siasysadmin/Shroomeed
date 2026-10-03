@@ -12,6 +12,7 @@ import { commerce, product, formula, benefits, homeFaq } from '../content/site'
 import { useSiteSettings } from '../hooks/useSiteSettings'
 import { formatPrice, useCart } from '../lib/cart'
 import styles from './Product.module.css'
+import { JsonLd } from '../components/common/JsonLd'
 
 
 export default function Product() {
@@ -29,8 +30,40 @@ export default function Product() {
     add(plan === 'quarterly' ? 3 : 1)
   }
 
+    const productSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'Daily Shield',
+    sku: 'SM-DS-60',
+    description:
+      'A two-capsule daily formula built around Cordyceps militaris, with NAC, Tulsi, Vasaka, Mulethi, Curcumin, Ginger, Vitamin C and Pippali. 60 capsules, one month supply.',
+    image: [
+      'https://shroomeed.com/media/shop01.png',
+      'https://shroomeed.com/media/shop02.png',
+      'https://shroomeed.com/media/shop03.png',
+    ],
+    brand: { '@type': 'Brand', name: 'ShrooMEED' },
+    category: 'Health supplement',
+    offers: {
+      '@type': 'Offer',
+      url: 'https://shroomeed.com/product',
+      price: '3000',
+      priceCurrency: 'INR',
+      availability: 'https://schema.org/InStock',
+      itemCondition: 'https://schema.org/NewCondition',
+      seller: { '@id': 'https://shroomeed.com/#organization' },
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: { '@type': 'MonetaryAmount', value: '0', currency: 'INR' },
+        shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'IN' },
+      },
+    },
+  }
+
   return (
+    
     <>
+          <JsonLd data={productSchema} />
       <section className={styles.buy} aria-labelledby="product-title">
         <div className={styles.gallery}>
           <Reveal as="ul" className={styles.thumbs} delay={0.08}>
