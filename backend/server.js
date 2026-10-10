@@ -652,6 +652,192 @@ app.delete('/api/showcase-videos/:id', async (req, res) => {
   }
 })
 
+// --- INSIGHTS (BLOG) ---
+
+const BlogSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  slug: { type: String, required: true, unique: true, index: true },
+  excerpt: { type: String, default: '' },
+  body: { type: String, default: '' },
+  coverImage: { type: String, default: '' },
+  author: { type: String, default: 'ShrooMEED' },
+  published: { type: Boolean, default: false },
+  publishedAt: { type: Date },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+})
+
+const Blog = mongoose.model('Blog', BlogSchema)
+
+/** Title se URL banao: "Cordyceps & VO2 Max" → "cordyceps-vo2-max" */
+function slugify(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80)
+}
+
+/** Do blogs ka URL ek jaisa na ho — warna doosra save hi nahi hoga. */
+async function uniqueSlug(title, ignoreId) {
+  const base = slugify(title) || 'post'
+  let slug = base
+
+  for (let i = 2; i < 50; i += 1) {
+    const clash = await Blog.findOne({ slug })
+    if (!clash || String(clash._id) === String(ignoreId)) return slug
+    slug = `${base}-${i}`
+  }
+  return `${base}-${Date.now()}`
+}
+
+/** Padhne mein kitna samay — 200 shabd prati minute. */
+function readMinutes(body) {
+  const words = String(body || '').trim().split(/\s+/).filter(Boolean).length
+  return Math.max(1, Math.round(words / 200))
+}
+
+// Website: sirf published blogs, bina poore body ke (list halki rahe)
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const blogs = await Blog.find({ published: true })
+      .sort({ publishedAt: -1, createdAt: -1 })
+      .select('title slug excerpt coverImage author publishedAt body')
+
+    res.json(
+      blogs.map((blog) => ({
+        title: blog.title,
+        slug: blog.slug,
+        excerpt: blog.excerpt,
+        coverImage: blog.coverImage,
+        author: blog.author,
+        publishedAt: blog.publishedAt,
+        readMinutes: readMinutes(blog.body),
+      })),
+    )
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load the articles.' })
+  }
+})
+
+// Website: ek article
+app.get('/api/blogs/:slug', async (req, res) => {
+  try {
+    const blog = await Blog.findOne({ slug: req.params.slug, published: true })
+    if (!blog) return res.status(404).json({ error: 'Article not found.' })
+
+    res.json({
+      title: blog.title,
+      slug: blog.slug,
+      excerpt: blog.excerpt,
+      body: blog.body,
+      coverImage: blog.coverImage,
+      author: blog.author,
+      publishedAt: blog.publishedAt,
+      readMinutes: readMinutes(blog.body),
+    })
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load the article.' })
+  }
+})
+
+// Admin: sab kuch, draft bhi
+app.get('/api/admin/blogs', requireAdmin, async (req, res) => {
+  try {
+    const blogs = await Blog.find().sort({ updatedAt: -1 })
+    res.json(blogs)
+  } catch (err) {
+    res.status(500).json({ error: 'Could not load the articles.' })
+  }
+})
+
+// Admin: article ke beech mein daalne wali image
+app.post('/api/blogs/image', requireAdmin, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No image received.' })
+    if (req.file.size > MAX_IMAGE_BYTES) {
+      fs.unlinkSync(req.file.path)
+      return res.status(400).json({ error: 'Image must be under 10MB.' })
+    }
+    res.status(201).json({ url: `/uploads/${req.file.filename}` })
+  } catch (err) {
+    res.status(500).json({ error: 'Could not upload the image.' })
+  }
+})
+
+// Admin: naya article
+app.post('/api/blogs', requireAdmin, upload.single('image'), async (req, res) => {
+  try {
+    const { title, excerpt, body, author, published } = req.body || {}
+    if (!String(title || '').trim()) {
+      return res.status(400).json({ error: 'Title is required.' })
+    }
+
+    const isPublished = published === 'true' || published === true
+
+    const blog = await Blog.create({
+      title: String(title).trim(),
+      slug: await uniqueSlug(title),
+      excerpt: String(excerpt || '').trim(),
+      body: String(body || ''),
+      author: String(author || '').trim() || 'ShrooMEED',
+      coverImage: req.file ? `/uploads/${req.file.filename}` : '',
+      published: isPublished,
+      publishedAt: isPublished ? new Date() : undefined,
+    })
+
+    res.status(201).json(blog)
+  } catch (err) {
+    console.error('Blog create failed:', err)
+    res.status(500).json({ error: 'Could not save the article.' })
+  }
+})
+
+// Admin: article badlo
+app.put('/api/blogs/:id', requireAdmin, upload.single('image'), async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id)
+    if (!blog) return res.status(404).json({ error: 'Article not found.' })
+
+    const { title, excerpt, body, author, published } = req.body || {}
+    const isPublished = published === 'true' || published === true
+
+    if (title && title.trim() !== blog.title) {
+      blog.title = title.trim()
+      blog.slug = await uniqueSlug(title, blog._id)
+    }
+
+    if (excerpt !== undefined) blog.excerpt = String(excerpt).trim()
+    if (body !== undefined) blog.body = String(body)
+    if (author !== undefined) blog.author = String(author).trim() || 'ShrooMEED'
+    if (req.file) blog.coverImage = `/uploads/${req.file.filename}`
+
+    // Pehli baar publish hone ki tareekh hi asli tareekh hai
+    if (isPublished && !blog.published) blog.publishedAt = new Date()
+    blog.published = isPublished
+    blog.updatedAt = new Date()
+
+    await blog.save()
+    res.json(blog)
+  } catch (err) {
+    console.error('Blog update failed:', err)
+    res.status(500).json({ error: 'Could not update the article.' })
+  }
+})
+
+// Admin: article hatao
+app.delete('/api/blogs/:id', requireAdmin, async (req, res) => {
+  try {
+    const blog = await Blog.findByIdAndDelete(req.params.id)
+    if (!blog) return res.status(404).json({ error: 'Article not found.' })
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: 'Could not delete the article.' })
+  }
+})
+
 // --- ADMIN AUTH ---
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase()

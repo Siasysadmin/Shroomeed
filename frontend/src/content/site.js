@@ -39,6 +39,7 @@ export const nav = [
   { label: 'Review', to: '/reviews' },
   { label: 'FAQ', to: '/faq' },
   { label: 'Science', to: '/science' },
+    { label: 'Insights', to: '/insights' },
 ]
 
 export const hero = {

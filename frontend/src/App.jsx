@@ -26,6 +26,8 @@ const AllResearches = lazy(() => import('./pages/AllResearches'))
 const Account = lazy(() => import('./pages/Account'))
 const Admin = lazy(() => import('./pages/Admin'))
 const Policy = lazy(() => import('./pages/Policy'))
+const Insights = lazy(() => import('./pages/Insights'))
+const Insight = lazy(() => import('./pages/Insight'))
 import { useSmoothScroll } from './hooks/useSmoothScroll'
 import { scrollToTop } from './lib/scroller'
 
@@ -80,6 +82,8 @@ export default function App() {
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/faq" element={<FaqPage />} />
             <Route path="/researches" element={<AllResearches />} />
+                        <Route path="/insights" element={<Insights />} />
+            <Route path="/insights/:slug" element={<Insight />} />
             <Route path="/policies/:policyId" element={<Policy />} />
             <Route path="/account" element={<Account />} />
             <Route path="/admin/*" element={<Admin />} />

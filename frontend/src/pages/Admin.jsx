@@ -21,6 +21,7 @@ const SECTIONS = [
   { id: 'videos', label: 'Showcase Videos', heading: 'Manage Videos' },
   { id: 'questions', label: 'FAQ Questions', heading: 'Questions from visitors' },
   { id: 'visibility', label: 'Section Visibility', heading: 'Section Visibility' },
+    { id: 'insights', label: 'Insights', heading: 'Insights' },
 ]
 
 export default function Admin() {
@@ -93,6 +94,7 @@ export default function Admin() {
 
         <div className="admin-content-wrapper">
                     {section === 'orders' && <OrdersPanel onUnauthorized={handleLogout} />}
+                              {section === 'insights' && <InsightsPanel onUnauthorized={handleLogout} />}
           {section === 'reviews' && <ReviewsPanel />}
           {section === 'videos' && <VideosPanel />}
           {section === 'questions' && <QuestionsPanel onChange={refreshNewCount} />}
@@ -1624,5 +1626,301 @@ function OrdersPanel({ onUnauthorized }) {
         </ul>
       )}
     </div>
+  )
+}
+
+
+/* --------------------------------------------------------------- insights */
+
+const EMPTY_POST = { title: '', excerpt: '', author: '', body: '', published: false }
+
+function InsightsPanel({ onUnauthorized }) {
+  const [rows, setRows] = useState([])
+  const [form, setForm] = useState(EMPTY_POST)
+  const [editingId, setEditingId] = useState(null)
+  const [cover, setCover] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState(null)
+  const [loading, setLoading] = useState(true)
+    const coverPreview = useObjectUrl(cover)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    adminFetch('/api/admin/blogs')
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        if (err.status === 401) onUnauthorized?.()
+        else setNotice({ tone: 'bad', text: err.message })
+      })
+      .finally(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const setField = (key) => (e) =>
+    setForm((current) => ({ ...current, [key]: e.target.value }))
+
+  const reset = () => {
+    setForm(EMPTY_POST)
+    setEditingId(null)
+    setCover(null)
+  }
+
+  /**
+   * Article ke beech wali image pehle upload hoti hai, phir uska link text
+   * mein chipak jaata hai — taaki admin ko URL khud likhna na pade.
+   */
+  const insertImage = async (file) => {
+    if (!file) return
+    setBusy(true)
+    try {
+      const body = new FormData()
+      body.append('image', file)
+
+      const token = localStorage.getItem('shroomeed_admin_token') || ''
+      const res = await fetch(`${API_URL}/api/blogs/image`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body,
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Upload failed.')
+
+      setForm((current) => ({
+        ...current,
+        body: `${current.body}${current.body.endsWith('\n') || !current.body ? '' : '\n'}\n![Describe the image](${data.url})\n\n`,
+      }))
+      setNotice({ tone: 'ok', text: 'Image added at the end — move it where you want it.' })
+    } catch (err) {
+      setNotice({ tone: 'bad', text: err.message })
+    }
+    setBusy(false)
+  }
+
+  const save = async (e) => {
+    e.preventDefault()
+    if (!form.title.trim()) {
+      setNotice({ tone: 'bad', text: 'A title is needed.' })
+      return
+    }
+
+    setBusy(true)
+    setNotice(null)
+    try {
+      const body = new FormData()
+      body.append('title', form.title)
+      body.append('excerpt', form.excerpt)
+      body.append('author', form.author)
+      body.append('body', form.body)
+      body.append('published', String(form.published))
+      if (cover) body.append('image', cover)
+
+      const token = localStorage.getItem('shroomeed_admin_token') || ''
+      const res = await fetch(
+        `${API_URL}/api/blogs${editingId ? '/' + editingId : ''}`,
+        {
+          method: editingId ? 'PUT' : 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body,
+        },
+      )
+      const data = await res.json().catch(() => null)
+      if (res.status === 401) { onUnauthorized?.(); return }
+      if (!res.ok) throw new Error(data?.error || 'Could not save.')
+
+      setNotice({ tone: 'ok', text: editingId ? 'Article updated.' : 'Article created.' })
+      reset()
+      load()
+    } catch (err) {
+      setNotice({ tone: 'bad', text: err.message })
+    }
+    setBusy(false)
+  }
+
+  const edit = (row) => {
+    setEditingId(row._id)
+    setCover(null)
+    setForm({
+      title: row.title || '',
+      excerpt: row.excerpt || '',
+      author: row.author || '',
+      body: row.body || '',
+      published: Boolean(row.published),
+    })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const remove = async (row) => {
+    if (!window.confirm(`Delete "${row.title}" permanently?`)) return
+    try {
+      await adminFetch(`/api/blogs/${row._id}`, { method: 'DELETE' })
+      setRows((current) => current.filter((r) => r._id !== row._id))
+      if (editingId === row._id) reset()
+    } catch (err) {
+      if (err.status === 401) onUnauthorized?.()
+      else window.alert(err.message)
+    }
+  }
+
+  return (
+    <>
+      <div className="admin-form-card">
+        <div className="admin-form-header">
+          <h2>{editingId ? 'Edit article' : 'New article'}</h2>
+                  <p className="admin-form-desc">
+            Write in plain text — formatting hints are under the article box.
+          </p>
+        </div>
+
+            {notice && <Notice notice={notice} />}
+
+        <form className="admin-form" onSubmit={save}>
+          <div className="admin-form-group">
+            <label htmlFor="post-title">Title</label>
+            <input
+              id="post-title"
+              type="text"
+              value={form.title}
+              onChange={setField('title')}
+              placeholder="What Cordyceps does for VO2 max"
+            />
+          </div>
+
+          <div className="admin-form-group">
+            <label htmlFor="post-excerpt">Short summary</label>
+            <input
+              id="post-excerpt"
+              type="text"
+              value={form.excerpt}
+              onChange={setField('excerpt')}
+              placeholder="One line that shows under the title on the list page"
+            />
+          </div>
+
+          <div className="admin-form-row">
+            <div className="admin-form-group">
+              <label htmlFor="post-author">Author</label>
+              <input
+                id="post-author"
+                type="text"
+                value={form.author}
+                onChange={setField('author')}
+                placeholder="ShrooMEED"
+              />
+            </div>
+
+                        <div className="admin-form-group">
+              <label>Cover image</label>
+              {cover && coverPreview ? (
+                <MediaPreview
+                  onClear={() => setCover(null)}
+                  title={cover.name}
+                  meta={`${(cover.size / (1024 * 1024)).toFixed(1)} MB`}
+                >
+                  <img src={coverPreview} alt="Selected cover" />
+                </MediaPreview>
+              ) : (
+                <FilePicker
+                  accept="image/*"
+                  onPick={setCover}
+                  icon="image"
+                  hint={editingId
+                    ? 'Leave empty to keep the current one'
+                    : 'JPG, PNG or WebP — up to 10MB'}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="admin-form-group">
+            <label htmlFor="post-body">Article</label>
+            <textarea
+              id="post-body"
+              rows="18"
+              value={form.body}
+              onChange={setField('body')}
+              placeholder={'## A heading\n\nA paragraph with **bold** in it.\n\n- A bullet\n- Another bullet'}
+              style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '0.88rem', lineHeight: 1.7 }}
+            />
+            <p className="admin-input-hint">
+              ## for a heading · - for a bullet · **bold** for bold · blank line between paragraphs
+            </p>
+          </div>
+
+                  <div className="admin-form-group">
+            <label>Add an image inside the article</label>
+            <FilePicker
+              accept="image/*"
+              onPick={insertImage}
+              icon="image"
+              hint={busy
+                ? 'Uploading…'
+                : 'It lands at the end of the article — move that line where you want it'}
+            />
+          </div>
+
+          <div className="admin-form-group">
+            <label className="admin-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.published}
+                onChange={(e) => setForm({ ...form, published: e.target.checked })}
+              />
+              Publish on the website
+            </label>
+          </div>
+
+          <div className="admin-form-actions">
+            <button type="submit" className="admin-submit-btn" disabled={busy}>
+              {busy ? 'Saving…' : editingId ? 'Update article' : 'Create article'}
+            </button>
+            {editingId && (
+              <button type="button" className="admin-ghost-btn" onClick={reset}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      </div>
+
+      <div className="admin-form-card">
+        <div className="admin-form-header">
+          <h2>All articles ({rows.length})</h2>
+          <p className="admin-form-desc">Drafts stay hidden until you tick Publish.</p>
+        </div>
+
+        {loading && <p className="admin-empty">Loading…</p>}
+
+        {!loading && rows.length === 0 && (
+          <p className="admin-empty">Nothing written yet.</p>
+        )}
+
+        {rows.length > 0 && (
+          <ul className="admin-list">
+            {rows.map((row) => (
+              <li key={row._id} className="admin-list-row">
+                {row.coverImage && (
+                  <img className="admin-list-thumb" src={mediaUrl(row.coverImage)} alt="" />
+                )}
+                <div className="admin-list-body">
+                  <strong>{row.title}</strong>
+                  <span className={`admin-pill ${row.published ? 'admin-pill--new' : ''}`}>
+                    {row.published ? 'Published' : 'Draft'}
+                  </span>
+                  <span className="admin-list-meta">/insights/{row.slug}</span>
+                </div>
+                <button type="button" className="admin-secondary-btn" style={{ marginRight: 8 }} onClick={() => edit(row)}>
+                  Edit
+                </button>
+                <button type="button" className="admin-danger-btn" onClick={() => remove(row)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
   )
 }

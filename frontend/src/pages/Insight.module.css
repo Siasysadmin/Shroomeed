@@ -1,0 +1,76 @@
+.page {
+  padding: clamp(120px, 15vw, 180px) var(--gutter) var(--section-y);
+  max-width: 740px;
+  margin: 0 auto;
+}
+
+.back {
+  display: inline-block;
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: var(--tracking-micro);
+  text-transform: uppercase;
+  color: var(--amber);
+  text-decoration: none;
+  margin-bottom: var(--stack-md);
+}
+
+.back:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.meta {
+  font-size: var(--fs-micro);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-80);
+  opacity: 0.55;
+  margin-bottom: var(--stack-xs);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-heading);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--stack-sm);
+  text-wrap: pretty;
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: 1.6;
+  color: var(--ink-80);
+  margin-bottom: var(--stack-md);
+  text-wrap: pretty;
+}
+
+/* Cover gutter se bahar nikal kar poori chaudai leta hai — article ka darwaza */
+.cover {
+  margin: 0 calc(var(--gutter) * -0.5) var(--stack-lg);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.note {
+  font-size: var(--fs-body);
+  color: var(--ink-80);
+  opacity: 0.7;
+}
+
+.footer {
+  margin-top: var(--stack-lg);
+  padding-top: var(--stack-md);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 860px) {
+  .page { padding-top: calc(var(--nav-inset) + var(--safe-top) + 84px); }
+  .title { font-size: clamp(1.9rem, 8.6vw, 2.8rem); }
+  .cover { margin-inline: 0; }
+}
